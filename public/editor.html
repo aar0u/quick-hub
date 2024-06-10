@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title></title>
+    <title>Temp Pad</title>
     <!-- 引入Pico.css样式 -->
     <link rel="stylesheet" href="css/pico.min.css" />
     <style>
@@ -28,36 +28,75 @@
       }
       button {
         margin-top: 1rem;
+        margin-bottom: 1rem;
         padding: 0.5rem 1rem;
-        border: none;
-        border-radius: var(--radius-sm);
+        cursor: pointer;
+      }
+      li {
         cursor: pointer;
       }
     </style>
   </head>
   <body>
-    <div class="editor-container">
-      <h1>Text Pad</h1>
-      <textarea id="editor" placeholder="在这里输入文本..."></textarea>
+    <div class="container">
+      <h1>Temp Pad</h1>
+      <textarea id="text-area" placeholder="Text here..."></textarea>
       <button onclick="saveText()">Save</button>
-      <script>
-        function saveText() {
-          const text = document.getElementById("editor").value;
-          fetch("/save", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `text=${encodeURIComponent(text)}`,
-          }).then(() => {
-            location.reload();
-          });
-        }
-
-        fetch("/load")
-          .then((response) => response.text())
-          .then((text) => {
-            document.getElementById("editor").value = text;
-          });
-      </script>
+      <button onclick="loadHistory()">Refresh</button>
+      <h2>History</h2>
+      <ul id="history-list"></ul>
     </div>
+    <script>
+      // 初始化时加载历史记录
+      function loadHistory() {
+        fetch("/load")
+          .then((response) => response.json())
+          .then((data) => {
+            const historyList = document.getElementById("history-list");
+            historyList.innerHTML = ""; // 清空历史记录列表
+            data.forEach((item) => {
+              const listItem = document.createElement("li");
+              listItem.textContent = `${new Date(item.timestamp).toLocaleString(
+                "en-SG",
+                { dateStyle: "short", timeStyle: "short", hour12: false }
+              )}: ${item.text}`;
+              listItem.addEventListener("click", () => {
+                // 点击时获取textarea元素并设置其值为点击的列表项文本
+                const textArea = document.getElementById("text-area");
+                textArea.value = item.text;
+              });
+              historyList.appendChild(listItem);
+            });
+          })
+          .catch((error) => {
+            console.error("Error loading history:", error);
+          });
+      }
+
+      // 保存文本到服务器
+      function saveText() {
+        const text = document.getElementById("text-area").value;
+        fetch("/save", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+          },
+          body: "text=" + encodeURIComponent(text),
+        })
+          .then((response) => {
+            if (response.ok) {
+              loadHistory(); // 保存后重新加载历史记录以显示最新项
+            } else {
+              throw new Error("Failed to save text");
+            }
+          })
+          .catch((error) => {
+            console.error("Error saving text:", error);
+          });
+      }
+
+      // 页面加载时加载历史记录
+      window.onload = loadHistory;
+    </script>
   </body>
 </html>

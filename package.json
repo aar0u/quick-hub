@@ -1,5 +1,5 @@
 {
-  "name": "temp-editor",
+  "name": "temp-pad",
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
@@ -10,6 +10,6 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "",
   "description": ""
 }

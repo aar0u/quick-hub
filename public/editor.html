@@ -43,6 +43,7 @@
       <textarea id="text-area" placeholder="Text here..."></textarea>
       <button onclick="saveText()">Save</button>
       <button onclick="loadHistory()">Refresh</button>
+      <span id="message"></span>
       <h2>History</h2>
       <ul id="history-list"></ul>
     </div>
@@ -79,19 +80,29 @@
         fetch("/save", {
           method: "POST",
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "Content-Type": "application/json",
           },
-          body: "text=" + encodeURIComponent(text),
+          body: JSON.stringify({ text: text }),
         })
           .then((response) => {
-            if (response.ok) {
+            return response.json();
+          })
+          .then((data) => {
+            const messageDiv = document.getElementById("message");
+            if (data.status === "success") {
+              messageDiv.textContent = data.message;
+              messageDiv.style.color = "green"; // 成功消息用绿色显示
               loadHistory(); // 保存后重新加载历史记录以显示最新项
             } else {
-              throw new Error("Failed to save text");
+              messageDiv.textContent = data.message;
+              messageDiv.style.color = "red"; // 失败消息用红色显示
             }
           })
           .catch((error) => {
-            console.error("Error saving text:", error);
+            console.error(
+              "There has been a problem with your fetch operation:",
+              error
+            );
           });
       }
 

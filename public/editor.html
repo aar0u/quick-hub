@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <!-- 引入Pico.css样式 -->
+    <link rel="stylesheet" href="css/pico.min.css" />
+    <style>
+      /* 自定义样式，可选 */
+      body {
+        font-family: var(--font-family);
+        background-color: var(--color-neutral-light);
+      }
+      .editor-container {
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 1rem;
+      }
+      textarea {
+        width: 100%;
+        height: 200px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--color-neutral);
+        padding: 0.5rem;
+        font-size: 1rem;
+        resize: vertical;
+      }
+      button {
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="editor-container">
+      <h1>Text Pad</h1>
+      <textarea id="editor" placeholder="在这里输入文本..."></textarea>
+      <button onclick="saveText()">Save</button>
+      <script>
+        function saveText() {
+          const text = document.getElementById("editor").value;
+          fetch("/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `text=${encodeURIComponent(text)}`,
+          }).then(() => {
+            location.reload();
+          });
+        }
+
+        fetch("/load")
+          .then((response) => response.text())
+          .then((text) => {
+            document.getElementById("editor").value = text;
+          });
+      </script>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>File Server</title>
+    <link rel="stylesheet" href="css/pico.min.css" />
+    <style>
+      #fileList {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      #fileList th,
+      #fileList td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+      #fileList tr:hover {
+        background-color: #f5f5f5;
+      }
+      #fileList th {
+        background-color: #f2f2f2;
+      }
+      button {
+        margin-bottom: 1rem;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>File Server</h1>
+      <input type="file" id="fileInput" />
+      <button id="uploadButton">Upload</button>
+      <button onclick="fetchFileList()">Refresh</button>
+      <a href="pad.html">Temp Pad</a>
+      <span id="message"></span>
+      <h1>File List</h1>
+      <table id="fileList">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <script>
+      // 获取DOM元素
+      const fileInput = document.getElementById("fileInput");
+      const uploadButton = document.getElementById("uploadButton");
+      const uploadStatus = document.getElementById("message");
+      const fileListTable = document
+        .getElementById("fileList")
+        .getElementsByTagName("tbody")[0];
+
+      // 文件上传事件处理函数
+      function handleFileUpload() {
+        const file = fileInput.files[0];
+        if (!file) {
+          return;
+        }
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/upload", true);
+
+        // 监听上传进度事件
+        xhr.upload.onprogress = function (e) {
+          if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            uploadStatus.textContent = percentComplete.toFixed(2) + "%";
+          }
+        };
+
+        // 监听上传完成事件
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            uploadStatus.textContent = "Upload successful";
+          } else {
+            uploadStatus.textContent = "Upload failed, Code:" + xhr.status;
+          }
+          fetchFileList();
+        };
+
+        // 设置请求头，如果是表单数据，通常不需要设置Content-Type
+        // xhr.setRequestHeader('Content-Type', 'multipart/form-data');
+
+        // 创建FormData对象并添加文件
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // 发送请求
+        xhr.send(formData);
+      }
+
+      // 格式化文件大小（以人类可读的方式）
+      function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";
+        if (bytes < 1024 * 1024 * 1024)
+          return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+      }
+
+      // 显示文件列表
+      function fetchFileList() {
+        fetch("/files")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Network response was not ok");
+            }
+            return response.json();
+          })
+          .then((files) => {
+            // 清空表格
+            fileListTable.innerHTML = "";
+
+            files.forEach((file) => {
+              const tr = document.createElement("tr");
+              const fileNameCell = document.createElement("td");
+              const fileSizeCell = document.createElement("td");
+              const fileTimeCell = document.createElement("td");
+
+              const downloadLink = document.createElement("a");
+              downloadLink.href = `/download/${encodeURIComponent(file.name)}`;
+              downloadLink.textContent = file.name;
+              downloadLink.className = "download-link";
+              fileNameCell.appendChild(downloadLink);
+              fileSizeCell.textContent = formatFileSize(file.size);
+              fileTimeCell.textContent = file.uploadTime;
+
+              tr.appendChild(fileNameCell);
+              tr.appendChild(fileSizeCell);
+              tr.appendChild(fileTimeCell);
+
+              fileListTable.appendChild(tr);
+            });
+          })
+          .catch((error) => {
+            console.error(
+              "There has been a problem with your fetch operation:",
+              error
+            );
+          });
+      }
+
+      // 为上传按钮添加点击事件监听器
+      uploadButton.addEventListener("click", handleFileUpload);
+
+      // 页面加载时获取初始文件列表
+      window.addEventListener("DOMContentLoaded", fetchFileList);
+    </script>
+  </body>
+</html>

@@ -1,10 +1,12 @@
 const express = require("express");
-const app = express();
-const path = require("path");
+const multer = require("multer");
 const fs = require("fs"); // 引入文件系统模块，用于模拟持久化存储（实际上这里不会持久化到磁盘）
+const path = require("path");
+const app = express();
 
 const host = "0.0.0.0"; // 监听所有接口
 const port = 3000; // 监听的端口
+const uploadDir = "uploads"; // 上传目录
 
 let history = []; // 创建一个数组来存储历史记录
 
@@ -45,9 +47,70 @@ loadHistory();
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
+// 配置multer，保持原文件名
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // 确保上传目录存在
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir);
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Buffer.from(file.originalname, "latin1").toString("utf8")); // 使用原文件名
+  },
+});
+
+const upload = multer({ storage: storage });
+
+// 获取文件列表
+app.get("/files", (req, res) => {
+  fs.readdir(uploadDir, (err, files) => {
+    if (err) {
+      return res.status(500).send("Error listing files.");
+    }
+    // 过滤掉非文件项（例如目录）
+    // const fileList = files.filter(file => fs.statSync(path.join(uploadDir, file)).isFile());
+    // 读取每个文件的统计信息
+    const fileInfos = files.map((file) => {
+      const filePath = path.join(uploadDir, file);
+      const stats = fs.statSync(filePath);
+      return {
+        name: file,
+        size: stats.size,
+        uploadTime: stats.mtime.toLocaleString(),
+      };
+    });
+
+    res.json(fileInfos);
+  });
+});
+
+// 文件上传
+app.post("/upload", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("No file uploaded.");
+  }
+  res.send("File uploaded!");
+});
+
+// 文件下载
+app.get("/download/:filename", (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(uploadDir, filename);
+
+  fs.access(filePath, fs.constants.F_OK, (err) => {
+    if (err) {
+      return res.status(404).send("File not found.");
+    }
+
+    res.download(filePath, filename);
+  });
+});
+
 // 处理GET请求，显示文本编辑器
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/public/editor.html");
+  res.sendFile(__dirname + "/public/pad.html");
 });
 
 // 处理POST请求，保存文本到内存缓存

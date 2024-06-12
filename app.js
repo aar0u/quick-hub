@@ -6,7 +6,8 @@ const app = express();
 
 const host = "0.0.0.0"; // 监听所有接口
 const port = 3000; // 监听的端口
-const uploadDir = "uploads"; // 上传目录
+
+const uploadDir = "/Volumes/RAMDisk"; // 上传目录
 
 let history = []; // 创建一个数组来存储历史记录
 
@@ -67,7 +68,9 @@ const upload = multer({ storage: storage });
 app.get("/files", (req, res) => {
   fs.readdir(uploadDir, (err, files) => {
     if (err) {
-      return res.status(500).send("Error listing files.");
+      return res
+        .status(500)
+        .json({ status: "failed", message: "Error listing files." });
     }
     // 过滤掉非文件项（例如目录）
     // const fileList = files.filter(file => fs.statSync(path.join(uploadDir, file)).isFile());
@@ -82,7 +85,11 @@ app.get("/files", (req, res) => {
       };
     });
 
-    res.json(fileInfos);
+    res.json({
+      status: "success",
+      message: `${uploadDir}`,
+      files: fileInfos,
+    });
   });
 });
 
@@ -131,5 +138,5 @@ app.get("/load", (req, res) => {
 });
 
 app.listen(port, host, () => {
-  console.log(`running on port ${port}`);
+  console.log(`running on http://${host}:${port}`);
 });

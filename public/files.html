@@ -31,7 +31,7 @@
   </head>
   <body>
     <div class="container">
-      <h1>File Server</h1>
+      <h1>File Server<span id="folder"></span></h1>
       <input type="file" id="fileInput" />
       <button id="uploadButton">Upload</button>
       <button onclick="fetchFileList()">Refresh</button>
@@ -55,6 +55,7 @@
       const fileInput = document.getElementById("fileInput");
       const uploadButton = document.getElementById("uploadButton");
       const uploadStatus = document.getElementById("message");
+      const folder = document.getElementById("folder");
       const fileListTable = document
         .getElementById("fileList")
         .getElementsByTagName("tbody")[0];
@@ -110,16 +111,20 @@
       function fetchFileList() {
         fetch("/files")
           .then((response) => {
-            if (!response.ok) {
-              throw new Error("Network response was not ok");
-            }
             return response.json();
           })
-          .then((files) => {
+          .then((data) => {
             // 清空表格
             fileListTable.innerHTML = "";
 
-            files.forEach((file) => {
+            if (data.stauts && data.status !== "success") {
+              uploadStatus.textContent = data.message;
+              uploadStatus.style.color = "red";
+              return;
+            }
+            folder.textContent = data.message;
+
+            data.files.forEach((file) => {
               const tr = document.createElement("tr");
               const fileNameCell = document.createElement("td");
               const fileSizeCell = document.createElement("td");

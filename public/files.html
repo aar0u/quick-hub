@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/pico.min.css" />
     <style>
       #fileList {
+        font-size: medium;
         width: 100%;
         border-collapse: collapse;
       }
@@ -27,17 +28,19 @@
         padding: 0.5rem 1rem;
         cursor: pointer;
       }
+      #folder {
+        font-size: medium;
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>File Server <span id="folder"></span></h1>
+      <h1>File Server <a href="pad.html">Temp Pad</a></h1>
       <input type="file" id="fileInput" />
       <button id="uploadButton">Upload</button>
       <button onclick="fetchFileList()">Refresh</button>
-      <a href="pad.html">Temp Pad</a>
       <span id="message"></span>
-      <h1>File List</h1>
+      <h1>File List <span id="folder"></span></h1>
       <table id="fileList">
         <thead>
           <tr>
@@ -100,6 +103,7 @@
 
       // 格式化文件大小（以人类可读的方式）
       function formatFileSize(bytes) {
+        if (!bytes) return "";
         if (bytes < 1024) return bytes + " B";
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";
         if (bytes < 1024 * 1024 * 1024)

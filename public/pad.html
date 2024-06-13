@@ -4,24 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Temp Pad</title>
-    <!-- 引入Pico.css样式 -->
     <link rel="stylesheet" href="css/pico.min.css" />
     <style>
-      /* 自定义样式，可选 */
-      body {
-        font-family: var(--font-family);
-        background-color: var(--color-neutral-light);
-      }
-      .editor-container {
-        max-width: 600px;
-        margin: 2rem auto;
-        padding: 1rem;
-      }
       textarea {
         width: 100%;
         height: 200px;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--color-neutral);
         padding: 0.5rem;
         font-size: 1rem;
         resize: vertical;
@@ -39,11 +26,10 @@
   </head>
   <body>
     <div class="container">
-      <h1>Temp Pad</h1>
+      <h1>Temp Pad <a href="files.html">File Server</a></h1>
       <textarea id="text-area" placeholder="Text here..."></textarea>
       <button onclick="saveText()">Save</button>
       <button onclick="loadHistory()">Refresh</button>
-      <a href="files.html">File Server</a>
       <span id="message"></span>
       <h2>History</h2>
       <ul id="history-list"></ul>

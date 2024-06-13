@@ -99,7 +99,7 @@ app.get("/files", (req, res) => {
         name: file,
         path: trimFromBeginning(filePath, workingDir),
         type: stats.isDirectory() ? "directory" : "file",
-        size: stats.size,
+        size: stats.isDirectory() ? "" : stats.size,
         uploadTime: stats.mtime.toLocaleString(),
       };
     });
@@ -114,7 +114,7 @@ app.get("/files", (req, res) => {
 
     res.json({
       status: "success",
-      message: `${workingDir}`,
+      message: `${fullPath}`,
       files: fileInfos,
     });
   });

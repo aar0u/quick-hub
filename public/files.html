@@ -31,7 +31,7 @@
   </head>
   <body>
     <div class="container">
-      <h1>File Server<span id="folder"></span></h1>
+      <h1>File Server <span id="folder"></span></h1>
       <input type="file" id="fileInput" />
       <button id="uploadButton">Upload</button>
       <button onclick="fetchFileList()">Refresh</button>
@@ -108,8 +108,8 @@
       }
 
       // 显示文件列表
-      function fetchFileList() {
-        fetch("/files")
+      function fetchFileList(dirname = "") {
+        fetch("/files?dirname=" + dirname)
           .then((response) => {
             return response.json();
           })
@@ -131,7 +131,17 @@
               const fileTimeCell = document.createElement("td");
 
               const downloadLink = document.createElement("a");
-              downloadLink.href = `/download/${encodeURIComponent(file.name)}`;
+
+              let fileName = encodeURIComponent(file.path);
+              if (file.type === "directory") {
+                downloadLink.href = `/files/${fileName}`;
+                downloadLink.onclick = function () {
+                  event.preventDefault();
+                  fetchFileList(fileName);
+                };
+              } else {
+                downloadLink.href = `/download/${fileName}`;
+              }
               downloadLink.textContent = file.name;
               downloadLink.className = "download-link";
               fileNameCell.appendChild(downloadLink);
@@ -156,8 +166,7 @@
       // 为上传按钮添加点击事件监听器
       uploadButton.addEventListener("click", handleFileUpload);
 
-      // 页面加载时获取初始文件列表
-      window.addEventListener("DOMContentLoaded", fetchFileList);
+      fetchFileList();
     </script>
   </body>
 </html>

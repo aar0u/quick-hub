@@ -7,7 +7,7 @@ const app = express();
 const host = "0.0.0.0"; // 监听所有接口
 const port = 3000; // 监听的端口
 
-const uploadDir = "/Volumes/RAMDisk"; // 上传目录
+const workingDir = "/Volumes/RAMDisk";
 
 let history = []; // 创建一个数组来存储历史记录
 
@@ -42,6 +42,14 @@ function validateFields(req, res, next) {
   next();
 }
 
+function trimFromBeginning(str, tar) {
+  if (str.startsWith(tar)) {
+    // 如果字符串以指定的单词（后面跟一个空格）开始，则去除它
+    return str.substring(tar.length); // +1 是为了去除单词后面的空格
+  }
+  return str; // 如果字符串不是以指定的单词开始，则返回原始字符串
+}
+
 // 初始化时加载历史记录
 loadHistory();
 
@@ -52,10 +60,10 @@ app.use(express.json());
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     // 确保上传目录存在
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
+    if (!fs.existsSync(workingDir)) {
+      fs.mkdirSync(workingDir);
     }
-    cb(null, uploadDir);
+    cb(null, workingDir);
   },
   filename: function (req, file, cb) {
     cb(null, Buffer.from(file.originalname, "latin1").toString("utf8")); // 使用原文件名
@@ -66,28 +74,47 @@ const upload = multer({ storage: storage });
 
 // 获取文件列表
 app.get("/files", (req, res) => {
-  fs.readdir(uploadDir, (err, files) => {
+  const dirname = req.query.dirname || ""; // 如果没有提供dirname，默认为空字符串（当前目录）
+  const fullPath = path.join(workingDir, dirname);
+  // 确保请求的路径在当前上传目录或其子目录内
+  if (!fullPath.startsWith(workingDir)) {
+    return res.status(403).send("Forbidden: Invalid directory path.");
+  }
+
+  fs.readdir(fullPath, (err, files) => {
     if (err) {
       return res
         .status(500)
         .json({ status: "failed", message: "Error listing files." });
     }
-    // 过滤掉非文件项（例如目录）
-    // const fileList = files.filter(file => fs.statSync(path.join(uploadDir, file)).isFile());
+    // 过滤
+    const fileList = files.filter((file) => {
+      return !file.startsWith(".");
+    });
     // 读取每个文件的统计信息
-    const fileInfos = files.map((file) => {
-      const filePath = path.join(uploadDir, file);
+    const fileInfos = fileList.map((file) => {
+      const filePath = path.join(fullPath, file);
       const stats = fs.statSync(filePath);
       return {
         name: file,
+        path: trimFromBeginning(filePath, workingDir),
+        type: stats.isDirectory() ? "directory" : "file",
         size: stats.size,
         uploadTime: stats.mtime.toLocaleString(),
       };
     });
 
+    if (fullPath != workingDir) {
+      fileInfos.unshift({
+        name: "..",
+        path: `${trimFromBeginning(fullPath, workingDir)}/..`,
+        type: "directory",
+      });
+    }
+
     res.json({
       status: "success",
-      message: `${uploadDir}`,
+      message: `${workingDir}`,
       files: fileInfos,
     });
   });
@@ -104,7 +131,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
 // 文件下载
 app.get("/download/:filename", (req, res) => {
   const filename = req.params.filename;
-  const filePath = path.join(uploadDir, filename);
+  const filePath = path.join(workingDir, filename);
 
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {

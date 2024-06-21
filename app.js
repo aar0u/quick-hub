@@ -1,3 +1,5 @@
+"use strict";
+
 const express = require("express");
 const multer = require("multer");
 const fs = require("fs"); // 引入文件系统模块，用于模拟持久化存储（实际上这里不会持久化到磁盘）
@@ -5,7 +7,7 @@ const path = require("path");
 const app = express();
 
 const host = "0.0.0.0"; // 监听所有接口
-const port = 3000; // 监听的端口
+const port = 80; // 监听的端口
 
 const workingDir = "/Volumes/RAMDisk";
 
@@ -19,8 +21,6 @@ function loadHistory() {
 
 // 保存历史记录（这里实际上是将数据写入一个模拟的持久化存储，实际上应该是写入数据库或文件系统）
 function saveHistory() {
-  // 假设我们将历史记录保存到文件系统中，这里只是简单地打印出来
-  console.log("Saving history:", history);
   // 在实际应用中，你会将history数组序列化并写入到文件或数据库中
 }
 
@@ -48,6 +48,27 @@ function trimFromBeginning(str, tar) {
     return str.substring(tar.length); // +1 是为了去除单词后面的空格
   }
   return str; // 如果字符串不是以指定的单词开始，则返回原始字符串
+}
+
+function getIP() {
+  const { networkInterfaces } = require("os");
+  const nets = networkInterfaces();
+  const ip = Object.create(null); // Or just '{}', an empty object
+
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+      // 'IPv4' is in Node <= 17, from 18 it's a number 4 or 6
+      const familyV4Value = typeof net.family === "string" ? "IPv4" : 4;
+      if (net.family === familyV4Value && !net.internal) {
+        if (!ip[name]) {
+          ip[name] = [];
+        }
+        ip[name].push(net.address);
+      }
+    }
+  }
+  return ip;
 }
 
 // 初始化时加载历史记录
@@ -151,6 +172,10 @@ app.get("/", (req, res) => {
 app.post("/save", validateFields, (req, res) => {
   const newText = req.body.text; // 获取要保存的文本
 
+  console.log("saving:");
+  console.group();
+  console.log("\x1b[36m%s\x1b[0m", newText);
+  console.groupEnd();
   // 将新的历史记录项添加到数组中（这里简单使用当前时间戳作为标识）
   history.push({ timestamp: Date.now(), text: newText });
 
@@ -165,5 +190,7 @@ app.get("/load", (req, res) => {
 });
 
 app.listen(port, host, () => {
+  const ip = getIP();
+  console.log(Object.keys(ip)[0], Object.values(ip)[0]);
   console.log(`running on http://${host}:${port}`);
 });

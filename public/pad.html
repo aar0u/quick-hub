@@ -28,7 +28,7 @@
     <div class="container">
       <h1>Temp Pad <a href="files.html">File Server</a></h1>
       <textarea id="text-area" placeholder="Text here..."></textarea>
-      <button onclick="saveText()">Save</button>
+      <button id="saveButton">Save</button>
       <button onclick="loadHistory()">Refresh</button>
       <span id="message"></span>
       <h2>History</h2>
@@ -95,6 +95,13 @@
 
       // 页面加载时加载历史记录
       window.onload = loadHistory;
+
+      document.getElementById("saveButton").addEventListener("click", saveText);
+      document.addEventListener("keydown", (event) => {
+        if (event.ctrlKey && event.key == "Enter") {
+          saveText();
+        }
+      });
     </script>
   </body>
 </html>

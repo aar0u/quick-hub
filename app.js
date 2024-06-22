@@ -9,9 +9,12 @@ const app = express();
 const host = "0.0.0.0"; // 监听所有接口
 const port = 80; // 监听的端口
 
-const workingDir = "/Volumes/RAMDisk";
-
 let history = []; // 创建一个数组来存储历史记录
+
+let workingDir = process.argv[2];
+if (!fs.existsSync(workingDir)) {
+  workingDir = "/Volumes/RAMDisk";
+}
 
 // 加载历史记录（这里实际上是从一个模拟的持久化存储中加载，实际上应该是从数据库或文件系统中加载）
 function loadHistory() {

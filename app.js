@@ -74,6 +74,17 @@ function getIP() {
   return ip;
 }
 
+function formatFileSize(bytes) {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = bytes;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+  return `${size.toFixed(2)} ${units[unitIndex]}`;
+}
+
 // 初始化时加载历史记录
 loadHistory();
 
@@ -83,6 +94,7 @@ app.use(express.json());
 // 配置multer，保持原文件名
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
+    console.log(`Upload started for file: ${file.originalname}`);
     // 确保上传目录存在
     if (!fs.existsSync(workingDir)) {
       fs.mkdirSync(workingDir);
@@ -90,11 +102,20 @@ const storage = multer.diskStorage({
     cb(null, workingDir);
   },
   filename: function (req, file, cb) {
+    console.log(`Processing file: ${file.originalname}`);
     cb(null, Buffer.from(file.originalname, "latin1").toString("utf8")); // 使用原文件名
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 1024 * 1024 * 1000 }, // 1000 MB limit
+  fileFilter: function (req, file, cb) {
+    console.log(`Checking file type for: ${file.originalname}`);
+    // You can add file type restrictions here if needed
+    cb(null, true);
+  },
+});
 
 // 获取文件列表
 app.get("/files", (req, res) => {
@@ -147,8 +168,18 @@ app.get("/files", (req, res) => {
 // 文件上传
 app.post("/upload", upload.single("file"), (req, res) => {
   if (!req.file) {
-    return res.status(400).send("No file uploaded.");
+    return res.status(400).send("No file was uploaded.");
   }
+
+  const fileSizeBytes = req.file.size;
+  const fileSizeFormatted = formatFileSize(fileSizeBytes);
+
+  console.log(`File upload completed:
+- Filename: ${req.file.originalname}
+- Size: ${fileSizeFormatted} (${fileSizeBytes.toLocaleString()} bytes)
+- MIME type: ${req.file.mimetype}
+- Path: ${req.file.path}`);
+
   res.send("File uploaded!");
 });
 

@@ -53,7 +53,7 @@
                 const textArea = document.getElementById("text-area");
                 textArea.value = item.text;
               });
-              historyList.appendChild(listItem);
+              historyList.prepend(listItem);
             });
           })
           .catch((error) => {

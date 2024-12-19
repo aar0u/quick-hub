@@ -6,9 +6,6 @@ const fs = require("fs"); // 引入文件系统模块，用于模拟持久化存
 const path = require("path");
 const app = express();
 
-const host = "0.0.0.0"; // 监听所有接口
-const port = 80; // 监听的端口
-
 let history = []; // 创建一个数组来存储历史记录
 
 let workingDir = process.argv[2];
@@ -53,27 +50,6 @@ function trimFromBeginning(str, tar) {
   return str; // 如果字符串不是以指定的单词开始，则返回原始字符串
 }
 
-function getIP() {
-  const { networkInterfaces } = require("os");
-  const nets = networkInterfaces();
-  const ip = Object.create(null); // Or just '{}', an empty object
-
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-      // 'IPv4' is in Node <= 17, from 18 it's a number 4 or 6
-      const familyV4Value = typeof net.family === "string" ? "IPv4" : 4;
-      if (net.family === familyV4Value && !net.internal) {
-        if (!ip[name]) {
-          ip[name] = [];
-        }
-        ip[name].push(net.address);
-      }
-    }
-  }
-  return ip;
-}
-
 function formatFileSize(bytes) {
   const units = ["B", "KB", "MB", "GB", "TB"];
   let size = bytes;
@@ -109,7 +85,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 1024 * 1024 * 1000 }, // 1000 MB limit
+  limits: { fileSize: 1024 * 1024 * 8000 }, // 8 GB limit
   fileFilter: function (req, file, cb) {
     console.log(`Checking file type for: ${file.originalname}`);
     // You can add file type restrictions here if needed
@@ -223,8 +199,4 @@ app.get("/load", (req, res) => {
   res.json(history); // 将历史记录作为JSON返回
 });
 
-app.listen(port, host, () => {
-  const ip = getIP();
-  console.log(Object.keys(ip)[0], Object.values(ip)[0]);
-  console.log(`running on http://${host}:${port}`);
-});
+module.exports = app;

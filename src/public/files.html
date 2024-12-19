@@ -29,7 +29,8 @@
         cursor: pointer;
         display: inline-block;
       }
-      #folder {
+      #folder,
+      #fetchStatus {
         font-size: medium;
       }
     </style>
@@ -41,7 +42,9 @@
       <span role="button" id="uploadButton">Upload</span>
       <span role="button" onclick="fetchFileList()">Refresh</span>
       <span id="message"></span>
-      <h1>File List <span id="folder"></span></h1>
+      <h1>
+        File List <span id="folder"></span> <span id="fetchStatus"></span>
+      </h1>
       <table id="fileList">
         <thead>
           <tr>
@@ -60,6 +63,7 @@
       const uploadButton = document.getElementById('uploadButton');
       const uploadStatus = document.getElementById('message');
       const folder = document.getElementById('folder');
+      const fetchStatus = document.getElementById('fetchStatus');
       const fileListTable = document
         .getElementById('fileList')
         .getElementsByTagName('tbody')[0];
@@ -85,10 +89,11 @@
 
         // 监听上传完成事件
         xhr.onload = function () {
+          const jsonResponse = JSON.parse(xhr.responseText);
           if (xhr.status === 200) {
-            uploadStatus.textContent = 'Upload successful';
+            uploadStatus.textContent = `Successful, ${jsonResponse.message} (${xhr.status})`;
           } else {
-            uploadStatus.textContent = 'Upload failed, Code:' + xhr.status;
+            uploadStatus.textContent = `Failed, ${jsonResponse.message} (${xhr.status})`;
           }
           fetchFileList();
         };
@@ -116,23 +121,24 @@
 
       // 显示文件列表
       function fetchFileList() {
-        uploadStatus.textContent = '';
-        uploadStatus.style.color = '';
         fetch('/files?dirname=' + dirname)
           .then((response) => {
             return response.json();
           })
-          .then((data) => {
+          .then((json) => {
             // 清空表格
             fileListTable.innerHTML = '';
 
-            if (data.status && data.status !== 'success') {
-              uploadStatus.textContent = data.message;
-              uploadStatus.style.color = 'red';
+            folder.textContent = json.data.folder;
+            if (json.status && json.status !== 'success') {
+              fetchStatus.textContent = json.message;
+              fetchStatus.style.color = 'red';
+            } else {
+              fetchStatus.textContent = '';
+              fetchStatus.style.color = '';
             }
-            folder.textContent = data.folder;
 
-            data.files.forEach((file) => {
+            json.data.files.forEach((file) => {
               const tr = document.createElement('tr');
               const fileNameCell = document.createElement('td');
               const fileSizeCell = document.createElement('td');

@@ -39,10 +39,10 @@
       function loadHistory() {
         fetch('/text/history')
           .then((response) => response.json())
-          .then((data) => {
+          .then((json) => {
             const historyList = document.getElementById('history-list');
             historyList.innerHTML = ''; // 清空历史记录列表
-            data.forEach((item) => {
+            json.data.forEach((item) => {
               const listItem = document.createElement('li');
               listItem.textContent = `${new Date(item.timestamp).toLocaleString(
                 'en-SG',

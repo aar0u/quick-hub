@@ -15,7 +15,17 @@ function trimFromBeginning(str, tar) {
   return str; // 如果字符串不是以指定的单词开始，则返回原始字符串
 }
 
+function jsonResponse(res, status, message, data = null) {
+  const response = { status, message };
+  if (data) {
+    response.data = data;
+  }
+  res.status(status === 'success' ? 200 : 400).json(response);
+  return res;
+}
+
 module.exports = {
   formatFileSize,
   trimFromBeginning,
+  jsonResponse,
 };

@@ -1,6 +1,8 @@
+'use strict';
+
 const app = require('./app');
 
-const host = "0.0.0.0"; // 监听所有接口
+const host = '0.0.0.0'; // 监听所有接口
 const port = process.env.PORT || 80;
 
 const server = app.listen(port, host, () => {
@@ -12,7 +14,7 @@ const server = app.listen(port, host, () => {
 server.timeout = 1000 * 60 * 30; // 30 minutes
 
 function getIP() {
-  const { networkInterfaces } = require("os");
+  const { networkInterfaces } = require('os');
   const nets = networkInterfaces();
   const ip = Object.create(null); // Or just '{}', an empty object
 
@@ -20,7 +22,7 @@ function getIP() {
     for (const net of nets[name]) {
       // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
       // 'IPv4' is in Node <= 17, from 18 it's a number 4 or 6
-      const familyV4Value = typeof net.family === "string" ? "IPv4" : 4;
+      const familyV4Value = typeof net.family === 'string' ? 'IPv4' : 4;
       if (net.family === familyV4Value && !net.internal) {
         if (!ip[name]) {
           ip[name] = [];

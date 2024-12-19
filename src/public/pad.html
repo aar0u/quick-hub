@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -37,37 +37,37 @@
     <script>
       // 初始化时加载历史记录
       function loadHistory() {
-        fetch("/load")
+        fetch('/text/history')
           .then((response) => response.json())
           .then((data) => {
-            const historyList = document.getElementById("history-list");
-            historyList.innerHTML = ""; // 清空历史记录列表
+            const historyList = document.getElementById('history-list');
+            historyList.innerHTML = ''; // 清空历史记录列表
             data.forEach((item) => {
-              const listItem = document.createElement("li");
+              const listItem = document.createElement('li');
               listItem.textContent = `${new Date(item.timestamp).toLocaleString(
-                "en-SG",
-                { dateStyle: "short", timeStyle: "short", hour12: false }
+                'en-SG',
+                { dateStyle: 'short', timeStyle: 'short', hour12: false }
               )}: ${item.text}`;
-              listItem.addEventListener("click", () => {
+              listItem.addEventListener('click', () => {
                 // 点击时获取textarea元素并设置其值为点击的列表项文本
-                const textArea = document.getElementById("text-area");
+                const textArea = document.getElementById('text-area');
                 textArea.value = item.text;
               });
               historyList.prepend(listItem);
             });
           })
           .catch((error) => {
-            console.error("Error loading history:", error);
+            console.error('Error loading history:', error);
           });
       }
 
       // 保存文本到服务器
       function saveText() {
-        const text = document.getElementById("text-area").value;
-        fetch("/save", {
-          method: "POST",
+        const text = document.getElementById('text-area').value;
+        fetch('/text/save', {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({ text: text }),
         })
@@ -75,19 +75,19 @@
             return response.json();
           })
           .then((data) => {
-            const messageDiv = document.getElementById("message");
-            if (data.status === "success") {
+            const messageDiv = document.getElementById('message');
+            if (data.status === 'success') {
               messageDiv.textContent = data.message;
-              messageDiv.style.color = "green"; // 成功消息用绿色显示
+              messageDiv.style.color = 'green'; // 成功消息用绿色显示
               loadHistory(); // 保存后重新加载历史记录以显示最新项
             } else {
               messageDiv.textContent = data.message;
-              messageDiv.style.color = "red"; // 失败消息用红色显示
+              messageDiv.style.color = 'red'; // 失败消息用红色显示
             }
           })
           .catch((error) => {
             console.error(
-              "There has been a problem with your fetch operation:",
+              'There has been a problem with your fetch operation:',
               error
             );
           });
@@ -96,9 +96,9 @@
       // 页面加载时加载历史记录
       window.onload = loadHistory;
 
-      document.getElementById("saveButton").addEventListener("click", saveText);
-      document.addEventListener("keydown", (event) => {
-        if (event.ctrlKey && event.key == "Enter") {
+      document.getElementById('saveButton').addEventListener('click', saveText);
+      document.addEventListener('keydown', (event) => {
+        if (event.ctrlKey && event.key == 'Enter') {
           saveText();
         }
       });

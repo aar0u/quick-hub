@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -23,10 +23,11 @@
       #fileList th {
         background-color: #f2f2f2;
       }
-      button {
+      span[role='button'] {
         margin-bottom: 1rem;
         padding: 0.5rem 1rem;
         cursor: pointer;
+        display: inline-block;
       }
       #folder {
         font-size: medium;
@@ -37,8 +38,8 @@
     <div class="container">
       <h1>File Server <a href="pad.html">Temp Pad</a></h1>
       <input type="file" id="fileInput" />
-      <button id="uploadButton">Upload</button>
-      <button onclick="fetchFileList()">Refresh</button>
+      <span role="button" id="uploadButton">Upload</span>
+      <span role="button" onclick="fetchFileList()">Refresh</span>
       <span id="message"></span>
       <h1>File List <span id="folder"></span></h1>
       <table id="fileList">
@@ -55,13 +56,15 @@
 
     <script>
       // 获取DOM元素
-      const fileInput = document.getElementById("fileInput");
-      const uploadButton = document.getElementById("uploadButton");
-      const uploadStatus = document.getElementById("message");
-      const folder = document.getElementById("folder");
+      const fileInput = document.getElementById('fileInput');
+      const uploadButton = document.getElementById('uploadButton');
+      const uploadStatus = document.getElementById('message');
+      const folder = document.getElementById('folder');
       const fileListTable = document
-        .getElementById("fileList")
-        .getElementsByTagName("tbody")[0];
+        .getElementById('fileList')
+        .getElementsByTagName('tbody')[0];
+
+      let dirname = '';
 
       // 文件上传事件处理函数
       function handleFileUpload() {
@@ -70,22 +73,22 @@
           return;
         }
         const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/upload", true);
+        xhr.open('POST', `/files/upload/${encodeURIComponent(dirname)}`, true);
 
         // 监听上传进度事件
         xhr.upload.onprogress = function (e) {
           if (e.lengthComputable) {
             const percentComplete = (e.loaded / e.total) * 100;
-            uploadStatus.textContent = percentComplete.toFixed(2) + "%";
+            uploadStatus.textContent = percentComplete.toFixed(2) + '%';
           }
         };
 
         // 监听上传完成事件
         xhr.onload = function () {
           if (xhr.status === 200) {
-            uploadStatus.textContent = "Upload successful";
+            uploadStatus.textContent = 'Upload successful';
           } else {
-            uploadStatus.textContent = "Upload failed, Code:" + xhr.status;
+            uploadStatus.textContent = 'Upload failed, Code:' + xhr.status;
           }
           fetchFileList();
         };
@@ -95,7 +98,7 @@
 
         // 创建FormData对象并添加文件
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append('file', file);
 
         // 发送请求
         xhr.send(formData);
@@ -103,51 +106,53 @@
 
       // 格式化文件大小（以人类可读的方式）
       function formatFileSize(bytes) {
-        if (!bytes) return "";
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";
+        if (!bytes) return '';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
         if (bytes < 1024 * 1024 * 1024)
-          return (bytes / (1024 * 1024)).toFixed(2) + " MB";
-        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+          return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
       }
 
       // 显示文件列表
-      function fetchFileList(dirname = "") {
-        fetch("/files?dirname=" + dirname)
+      function fetchFileList() {
+        uploadStatus.textContent = '';
+        uploadStatus.style.color = '';
+        fetch('/files?dirname=' + dirname)
           .then((response) => {
             return response.json();
           })
           .then((data) => {
             // 清空表格
-            fileListTable.innerHTML = "";
+            fileListTable.innerHTML = '';
 
-            if (data.stauts && data.status !== "success") {
+            if (data.status && data.status !== 'success') {
               uploadStatus.textContent = data.message;
-              uploadStatus.style.color = "red";
-              return;
+              uploadStatus.style.color = 'red';
             }
-            folder.textContent = data.message;
+            folder.textContent = data.folder;
 
             data.files.forEach((file) => {
-              const tr = document.createElement("tr");
-              const fileNameCell = document.createElement("td");
-              const fileSizeCell = document.createElement("td");
-              const fileTimeCell = document.createElement("td");
+              const tr = document.createElement('tr');
+              const fileNameCell = document.createElement('td');
+              const fileSizeCell = document.createElement('td');
+              const fileTimeCell = document.createElement('td');
 
-              const downloadLink = document.createElement("a");
+              const downloadLink = document.createElement('a');
 
               let fileName = encodeURIComponent(file.path);
-              if (file.type === "directory") {
+              if (file.type === 'directory') {
                 downloadLink.href = `/files/${fileName}`;
                 downloadLink.onclick = function () {
                   event.preventDefault();
-                  fetchFileList(fileName);
+                  dirname = fileName;
+                  fetchFileList();
                 };
               } else {
-                downloadLink.href = `/download/${fileName}`;
+                downloadLink.href = `/files/download/${fileName}`;
               }
               downloadLink.textContent = file.name;
-              downloadLink.className = "download-link";
+              downloadLink.className = 'download-link';
               fileNameCell.appendChild(downloadLink);
               fileSizeCell.textContent = formatFileSize(file.size);
               fileTimeCell.textContent = file.uploadTime;
@@ -161,14 +166,14 @@
           })
           .catch((error) => {
             console.error(
-              "There has been a problem with your fetch operation:",
+              'There has been a problem with your fetch operation:',
               error
             );
           });
       }
 
       // 为上传按钮添加点击事件监听器
-      uploadButton.addEventListener("click", handleFileUpload);
+      uploadButton.addEventListener('click', handleFileUpload);
 
       fetchFileList();
     </script>

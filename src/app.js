@@ -13,6 +13,9 @@ if (!fs.existsSync(workingDir)) {
   workingDir = "/Volumes/RAMDisk";
 }
 
+// Serve static files from the "public" directory
+app.use(express.static(path.join(__dirname, "public")));
+
 // 加载历史记录（这里实际上是从一个模拟的持久化存储中加载，实际上应该是从数据库或文件系统中加载）
 function loadHistory() {
   // 假设我们从文件系统中加载历史记录，这里用硬编码的数据代替
@@ -173,9 +176,8 @@ app.get("/download/:filename", (req, res) => {
   });
 });
 
-// 处理GET请求，显示文本编辑器
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/public/pad.html");
+  res.sendFile(path.join(__dirname, "public", "pad.html"));
 });
 
 // 处理POST请求，保存文本到内存缓存

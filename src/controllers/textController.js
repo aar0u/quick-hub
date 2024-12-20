@@ -17,7 +17,7 @@ const saveText = (text) => {
 
 const saveTextHandler = (req, res) => {
   const newText = req.body.text;
-  console.log('saving:');
+  console.log('Saving:');
   console.group();
   console.log('\x1b[36m%s\x1b[0m', newText);
   console.groupEnd();

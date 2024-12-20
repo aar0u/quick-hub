@@ -2,43 +2,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const multer = require('multer');
+const Busboy = require('busboy');
 const { workingDir } = require('../config');
 const utils = require('../utils');
 
-// 配置multer，保持原文件名
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const dir = req.params.dir || '';
-    const uploadDir = path.join(workingDir, decodeURIComponent(dir));
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const fileName = Buffer.from(file.originalname, 'latin1').toString('utf8'); // 使用原文件名
-    const dir = req.params.dir || '';
-    const filePath = path.join(workingDir, decodeURIComponent(dir), fileName);
-
-    // Check if the file already exists
-    if (fs.existsSync(filePath)) {
-      return cb(new Error('File already exists'), false);
-    }
-    console.log(`Upload started: ${filePath}`);
-    cb(null, fileName);
-  },
-});
-
-// Create the Multer upload middleware
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 1024 * 1024 * 8000 }, // 8 GB limit
-  fileFilter: function (req, file, cb) {
-    console.log(`Processing file: ${file.originalname}`);
-    cb(null, true);
-  },
-});
-
-const getFilesHandler = (req, res) => {
-  const dirname = req.query.dirname || ''; // 如果没有提供dirname，默认为空字符串（当前目录）
+const listHandler = (req, res) => {
+  const dirname = req.body.dirname || ''; // 如果没有提供dirname，默认为空字符串（当前目录）
   const fullPath = path.join(workingDir, dirname);
 
   const fileInfos = [];
@@ -84,30 +53,82 @@ const getFilesHandler = (req, res) => {
 };
 
 const uploadHandler = (req, res) => {
-  upload.single('file')(req, res, (err) => {
-    if (err) {
-      return utils.jsonResponse(res, 'failed', err.message);
-    }
-
-    if (!req.file) {
-      return utils.jsonResponse(res, 'failed', 'No file was uploaded.');
-    }
-
-    const fileSizeBytes = req.file.size;
-    const fileSizeFormatted = utils.formatFileSize(fileSizeBytes);
-
-    console.log(`File upload completed:
-  - Filename: ${req.file.originalname}
-  - Size: ${fileSizeFormatted} (${fileSizeBytes.toLocaleString()} bytes)
-  - MIME type: ${req.file.mimetype}
-  - Path: ${req.file.path}`);
-
-    return utils.jsonResponse(res, 'success', 'File uploaded.');
+  const busboy = Busboy({
+    headers: req.headers,
+    limits: {
+      fileSize: 8000 * 1024 * 1024, // 8GB limit
+    },
   });
+
+  let uploadedBytes = 0;
+  let lastReportedProgress = 0;
+  let metadata = null;
+  const fileSize = parseInt(req.headers['content-length'], 10);
+
+  busboy.on('field', (name, value) => {
+    if (name === 'metadata') {
+      try {
+        metadata = JSON.parse(value);
+      } catch (error) {
+        console.error('Error parsing metadata:', error);
+      }
+    }
+  });
+
+  busboy.on('file', (fieldname, file, { filename, encoding, mimeType }) => {
+    if (!metadata) {
+      file.resume();
+      return utils.jsonResponse(res, 'failed', 'No metadata provided.');
+    }
+
+    const uploadDir = path.join(workingDir, metadata.dirname);
+    const fileName = Buffer.from(filename, 'latin1').toString('utf8');
+    const filePath = path.join(uploadDir, fileName);
+
+    console.log(`Upload started: ${filePath}.`);
+    const writeStream = fs.createWriteStream(filePath);
+
+    file.on('data', (data) => {
+      uploadedBytes += data.length;
+      const currentProgress = Math.floor((uploadedBytes / fileSize) * 100);
+
+      // Only log if progress increased by 5% or more
+      if (currentProgress >= lastReportedProgress + 5) {
+        console.log(`${fileName}: ${currentProgress}%.`);
+        lastReportedProgress = currentProgress;
+      }
+    });
+
+    file.pipe(writeStream);
+
+    writeStream.on('finish', () => {
+      const stats = fs.statSync(filePath);
+      const fileSizeFormatted = utils.formatFileSize(stats.size);
+
+      console.log(`File uploaded
+  - File: ${filePath}
+  - Size: ${fileSizeFormatted} (${stats.size.toLocaleString()} bytes)
+  - MIME type: ${mimeType}`);
+
+      utils.jsonResponse(res, 'success', 'File uploaded.');
+    });
+
+    writeStream.on('error', (err) => {
+      console.error(`Error uploading file: ${err.message}.`);
+      utils.jsonResponse(res, 'failed', 'Error uploading file.');
+    });
+  });
+
+  busboy.on('error', (err) => {
+    console.error('Busboy error:', err);
+    utils.jsonResponse(res, 'failed', 'Upload failed.');
+  });
+
+  req.pipe(busboy);
 };
 
 const downloadHandler = (req, res) => {
-  const filename = req.params.filename;
+  const { filename } = req.params;
   const filePath = path.join(workingDir, filename);
 
   fs.access(filePath, fs.constants.F_OK, (err) => {
@@ -119,8 +140,25 @@ const downloadHandler = (req, res) => {
   });
 };
 
+const checkHandler = (req, res) => {
+  const { dirname = '', filename } = req.body;
+  const filePath = path.join(workingDir, decodeURIComponent(dirname), filename);
+
+  if (!filename) {
+    return utils.jsonResponse(res, 'failed', 'No filename provided.');
+  }
+
+  if (fs.existsSync(filePath)) {
+    console.log(`File already exists: ${filePath}.`);
+    return utils.jsonResponse(res, 'failed', 'File already exists.');
+  }
+
+  return utils.jsonResponse(res, 'success', 'File can be uploaded.');
+};
+
 module.exports = {
-  getFilesHandler,
+  listHandler,
   uploadHandler,
   downloadHandler,
+  checkHandler,
 };

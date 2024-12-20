@@ -58,7 +58,6 @@
     </div>
 
     <script>
-      // 获取DOM元素
       const fileInput = document.getElementById('fileInput');
       const uploadButton = document.getElementById('uploadButton');
       const uploadStatus = document.getElementById('message');
@@ -70,43 +69,64 @@
 
       let dirname = '';
 
-      // 文件上传事件处理函数
-      function handleFileUpload() {
+      async function handleFileUpload() {
         const file = fileInput.files[0];
-        if (!file) {
-          return;
+        if (!file) return;
+
+        try {
+          // Check if file exists before starting upload
+          const checkResponse = await fetch('/files/check', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              dirname,
+              filename: file.name,
+            }),
+          });
+
+          const checkResult = await checkResponse.json();
+          if (checkResult.status !== 'success') {
+            uploadStatus.textContent = checkResult.message;
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append(
+            'metadata',
+            JSON.stringify({
+              dirname,
+              filename: file.name,
+              fileSize: file.size,
+            })
+          );
+          formData.append('file', file);
+
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/files/upload', true);
+
+          xhr.upload.onprogress = function (e) {
+            if (e.lengthComputable) {
+              const percentComplete = (e.loaded / e.total) * 100;
+              uploadStatus.textContent = percentComplete.toFixed(2) + '%';
+            }
+          };
+
+          // 监听上传完成事件
+          xhr.onload = function () {
+            const jsonResponse = JSON.parse(xhr.responseText);
+            uploadStatus.textContent = `${jsonResponse.message} (${xhr.status})`;
+            fetchFileList();
+          };
+
+          // 设置请求头，如果是表单数据，通常不需要设置Content-Type
+          // xhr.setRequestHeader('Content-Type', 'multipart/form-data');
+
+          xhr.send(formData);
+        } catch (error) {
+          uploadStatus.textContent = `Error: ${error}`;
         }
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `/files/upload/${encodeURIComponent(dirname)}`, true);
-
-        // 监听上传进度事件
-        xhr.upload.onprogress = function (e) {
-          if (e.lengthComputable) {
-            const percentComplete = (e.loaded / e.total) * 100;
-            uploadStatus.textContent = percentComplete.toFixed(2) + '%';
-          }
-        };
-
-        // 监听上传完成事件
-        xhr.onload = function () {
-          const jsonResponse = JSON.parse(xhr.responseText);
-          if (xhr.status === 200) {
-            uploadStatus.textContent = `Successful, ${jsonResponse.message} (${xhr.status})`;
-          } else {
-            uploadStatus.textContent = `Failed, ${jsonResponse.message} (${xhr.status})`;
-          }
-          fetchFileList();
-        };
-
-        // 设置请求头，如果是表单数据，通常不需要设置Content-Type
-        // xhr.setRequestHeader('Content-Type', 'multipart/form-data');
-
-        // 创建FormData对象并添加文件
-        const formData = new FormData();
-        formData.append('file', file);
-
-        // 发送请求
-        xhr.send(formData);
       }
 
       // 格式化文件大小（以人类可读的方式）
@@ -120,65 +140,65 @@
       }
 
       // 显示文件列表
-      function fetchFileList() {
-        fetch('/files?dirname=' + dirname)
-          .then((response) => {
-            return response.json();
-          })
-          .then((json) => {
-            // 清空表格
-            fileListTable.innerHTML = '';
-
-            folder.textContent = json.data.folder;
-            if (json.status && json.status !== 'success') {
-              fetchStatus.textContent = json.message;
-              fetchStatus.style.color = 'red';
-            } else {
-              fetchStatus.textContent = '';
-              fetchStatus.style.color = '';
-            }
-
-            json.data.files.forEach((file) => {
-              const tr = document.createElement('tr');
-              const fileNameCell = document.createElement('td');
-              const fileSizeCell = document.createElement('td');
-              const fileTimeCell = document.createElement('td');
-
-              const downloadLink = document.createElement('a');
-
-              let fileName = encodeURIComponent(file.path);
-              if (file.type === 'directory') {
-                downloadLink.href = `/files/${fileName}`;
-                downloadLink.onclick = function () {
-                  event.preventDefault();
-                  dirname = fileName;
-                  fetchFileList();
-                };
-              } else {
-                downloadLink.href = `/files/download/${fileName}`;
-              }
-              downloadLink.textContent = file.name;
-              downloadLink.className = 'download-link';
-              fileNameCell.appendChild(downloadLink);
-              fileSizeCell.textContent = formatFileSize(file.size);
-              fileTimeCell.textContent = file.uploadTime;
-
-              tr.appendChild(fileNameCell);
-              tr.appendChild(fileSizeCell);
-              tr.appendChild(fileTimeCell);
-
-              fileListTable.appendChild(tr);
-            });
-          })
-          .catch((error) => {
-            console.error(
-              'There has been a problem with your fetch operation:',
-              error
-            );
+      async function fetchFileList() {
+        try {
+          const response = await fetch('/files/list', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ dirname }),
           });
+          const json = await response.json();
+          // 清空表格
+          fileListTable.innerHTML = '';
+
+          folder.textContent = json.data.folder;
+          if (json.status && json.status !== 'success') {
+            fetchStatus.textContent = json.message;
+            fetchStatus.style.color = 'red';
+          } else {
+            fetchStatus.textContent = '';
+            fetchStatus.style.color = '';
+          }
+
+          json.data.files.forEach((file) => {
+            const tr = document.createElement('tr');
+            const fileNameCell = document.createElement('td');
+            const fileSizeCell = document.createElement('td');
+            const fileTimeCell = document.createElement('td');
+
+            const downloadLink = document.createElement('a');
+
+            let fileName = encodeURIComponent(file.path);
+            if (file.type === 'directory') {
+              downloadLink.href = `/files/${fileName}`;
+              downloadLink.onclick = function () {
+                event.preventDefault();
+                dirname = file.path;
+                fetchFileList();
+              };
+            } else {
+              downloadLink.href = `/files/download/${fileName}`;
+            }
+            downloadLink.textContent = file.name;
+            downloadLink.className = 'download-link';
+            fileNameCell.appendChild(downloadLink);
+            fileSizeCell.textContent = formatFileSize(file.size);
+            fileTimeCell.textContent = file.uploadTime;
+
+            tr.appendChild(fileNameCell);
+            tr.appendChild(fileSizeCell);
+            tr.appendChild(fileTimeCell);
+
+            fileListTable.appendChild(tr);
+          });
+        } catch (error) {
+          console.error('Error:', error);
+          fetchStatus.textContent = 'Failed to load file list';
+        }
       }
 
-      // 为上传按钮添加点击事件监听器
       uploadButton.addEventListener('click', handleFileUpload);
 
       fetchFileList();

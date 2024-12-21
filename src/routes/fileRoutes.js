@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post('/list', fileController.listHandler);
 router.post('/check', fileController.checkHandler);
-router.post('/upload', fileController.uploadHandler);
+router.post('/add', fileController.uploadHandler);
 router.get('/download/:filename', fileController.downloadHandler);
 
 module.exports = router;

@@ -21,7 +21,7 @@ const listHandler = (req, res) => {
 
   fs.readdir(fullPath, (err, files) => {
     if (err) {
-      return utils.jsonResponse(res, 'failed', 'Error listing files.', {
+      return utils.jsonResponse(res, 'failed', 'Error listing files', {
         folder: utils.trimFromBeginning(fullPath, workingDir),
         files: fileInfos,
       });
@@ -45,7 +45,7 @@ const listHandler = (req, res) => {
         };
       })
     );
-    utils.jsonResponse(res, 'success', 'Files listed successfully.', {
+    utils.jsonResponse(res, 'success', 'Files listed successfully', {
       folder: utils.trimFromBeginning(fullPath, workingDir),
       files: fileInfos,
     });
@@ -78,14 +78,14 @@ const uploadHandler = (req, res) => {
   busboy.on('file', (fieldname, file, { filename, encoding, mimeType }) => {
     if (!metadata) {
       file.resume();
-      return utils.jsonResponse(res, 'failed', 'No metadata provided.');
+      return utils.jsonResponse(res, 'failed', 'No metadata provided');
     }
 
     const uploadDir = path.join(workingDir, metadata.dirname);
     const fileName = Buffer.from(filename, 'latin1').toString('utf8');
     const filePath = path.join(uploadDir, fileName);
 
-    console.log(`Upload started: ${filePath}.`);
+    console.log(`Upload started: ${filePath}`);
     const writeStream = fs.createWriteStream(filePath);
 
     file.on('data', (data) => {
@@ -94,7 +94,7 @@ const uploadHandler = (req, res) => {
 
       // Only log if progress increased by 5% or more
       if (currentProgress >= lastReportedProgress + 5) {
-        console.log(`${fileName}: ${currentProgress}%.`);
+        console.log(`${fileName}: ${currentProgress}%`);
         lastReportedProgress = currentProgress;
       }
     });
@@ -105,23 +105,28 @@ const uploadHandler = (req, res) => {
       const stats = fs.statSync(filePath);
       const fileSizeFormatted = utils.formatFileSize(stats.size);
 
-      console.log(`File uploaded
-  - File: ${filePath}
-  - Size: ${fileSizeFormatted} (${stats.size.toLocaleString()} bytes)
-  - MIME type: ${mimeType}`);
+      console.log('Upload completed:');
+      console.group();
+      console.log(
+        '\x1b[36m%s\x1b[0m',
+        `- File: ${filePath}
+- Size: ${fileSizeFormatted} (${stats.size.toLocaleString()} bytes)
+- MIME type: ${mimeType}`
+      );
+      console.groupEnd();
 
-      utils.jsonResponse(res, 'success', 'File uploaded.');
+      utils.jsonResponse(res, 'success', 'File uploaded');
     });
 
     writeStream.on('error', (err) => {
       console.error(`Error uploading file: ${err.message}.`);
-      utils.jsonResponse(res, 'failed', 'Error uploading file.');
+      utils.jsonResponse(res, 'failed', 'Error uploading file');
     });
   });
 
   busboy.on('error', (err) => {
     console.error('Busboy error:', err);
-    utils.jsonResponse(res, 'failed', 'Upload failed.');
+    utils.jsonResponse(res, 'failed', 'Upload failed');
   });
 
   req.pipe(busboy);
@@ -133,7 +138,7 @@ const downloadHandler = (req, res) => {
 
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
-      return utils.jsonResponse(res, 'failed', 'File not found.');
+      return utils.jsonResponse(res, 'failed', 'File not found');
     }
 
     res.download(filePath, filename);
@@ -145,15 +150,15 @@ const checkHandler = (req, res) => {
   const filePath = path.join(workingDir, decodeURIComponent(dirname), filename);
 
   if (!filename) {
-    return utils.jsonResponse(res, 'failed', 'No filename provided.');
+    return utils.jsonResponse(res, 'failed', 'No filename provided');
   }
 
   if (fs.existsSync(filePath)) {
-    console.log(`File already exists: ${filePath}.`);
-    return utils.jsonResponse(res, 'failed', 'File already exists.');
+    console.log(`File already exists: ${filePath}`);
+    return utils.jsonResponse(res, 'failed', 'File already exists');
   }
 
-  return utils.jsonResponse(res, 'success', 'File can be uploaded.');
+  return utils.jsonResponse(res, 'success', 'File can be uploaded');
 };
 
 module.exports = {

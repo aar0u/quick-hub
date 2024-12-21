@@ -29,9 +29,12 @@
         cursor: pointer;
         display: inline-block;
       }
-      #folder,
+      #folder {
+        font-size: medium;
+      }
       #fetchStatus {
         font-size: medium;
+        font-weight: normal;
       }
     </style>
   </head>
@@ -70,6 +73,10 @@
       let dirname = '';
 
       async function handleFileUpload() {
+        // Reset messages
+        uploadStatus.textContent = '';
+        uploadStatus.style.color = '';
+
         const file = fileInput.files[0];
         if (!file) return;
 
@@ -88,7 +95,7 @@
 
           const checkResult = await checkResponse.json();
           if (checkResult.status !== 'success') {
-            uploadStatus.textContent = checkResult.message;
+            uploadStatus.textContent = `${checkResult.message} (${checkResponse.status})`;
             return;
           }
 
@@ -104,7 +111,7 @@
           formData.append('file', file);
 
           const xhr = new XMLHttpRequest();
-          xhr.open('POST', '/files/upload', true);
+          xhr.open('POST', '/files/add', true);
 
           xhr.upload.onprogress = function (e) {
             if (e.lengthComputable) {
@@ -125,7 +132,8 @@
 
           xhr.send(formData);
         } catch (error) {
-          uploadStatus.textContent = `Error: ${error}`;
+          uploadStatus.textContent = error.message;
+          uploadStatus.style.color = 'red';
         }
       }
 
@@ -142,6 +150,10 @@
       // 显示文件列表
       async function fetchFileList() {
         try {
+          // Reset messages
+          fetchStatus.textContent = '';
+          fetchStatus.style.color = '';
+
           const response = await fetch('/files/list', {
             method: 'POST',
             headers: {
@@ -195,7 +207,8 @@
           });
         } catch (error) {
           console.error('Error:', error);
-          fetchStatus.textContent = 'Failed to load file list';
+          fetchStatus.textContent = error.message;
+          fetchStatus.style.color = 'red';
         }
       }
 

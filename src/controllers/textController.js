@@ -17,17 +17,17 @@ const saveText = (text) => {
 
 const saveTextHandler = (req, res) => {
   const newText = req.body.text;
-  console.log('Saving:');
+  console.log('Saved:');
   console.group();
   console.log('\x1b[36m%s\x1b[0m', newText);
   console.groupEnd();
 
   saveText(newText);
-  return utils.jsonResponse(res, 'success', 'Saved successfully.');
+  return utils.jsonResponse(res, 'success', 'Saved successfully');
 };
 
 const getHistoryHandler = (req, res) => {
-  return utils.jsonResponse(res, 'success', 'Load successfully.', history);
+  return utils.jsonResponse(res, 'success', 'Load successfully', history);
 };
 
 module.exports = {

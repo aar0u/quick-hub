@@ -29,15 +29,15 @@
       <h1>Temp Pad <a href="files.html">File Server</a></h1>
       <textarea id="text-area" placeholder="Text here..."></textarea>
       <button id="saveButton">Save</button>
-      <button onclick="loadHistory()">Refresh</button>
+      <button onclick="fetchList()">Refresh</button>
       <span id="message"></span>
-      <h2>History</h2>
+      <h2>List</h2>
       <ul id="history-list"></ul>
     </div>
     <script>
-      // 初始化时加载历史记录
-      function loadHistory() {
-        fetch('/text/history')
+      const messageDiv = document.getElementById('message');
+      function fetchList() {
+        fetch('/text/list')
           .then((response) => response.json())
           .then((json) => {
             const historyList = document.getElementById('history-list');
@@ -52,6 +52,10 @@
                 // 点击时获取textarea元素并设置其值为点击的列表项文本
                 const textArea = document.getElementById('text-area');
                 textArea.value = item.text;
+
+                textArea.select();
+                document.execCommand('copy');
+                messageDiv.textContent = 'Copied to clipboard';
               });
               historyList.prepend(listItem);
             });
@@ -61,10 +65,11 @@
           });
       }
 
-      // 保存文本到服务器
       function saveText() {
+        messageDiv.textContent = '';
+        messageDiv.style.color = '';
         const text = document.getElementById('text-area').value;
-        fetch('/text/save', {
+        fetch('/text/add', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -75,14 +80,12 @@
             return response.json();
           })
           .then((data) => {
-            const messageDiv = document.getElementById('message');
             if (data.status === 'success') {
               messageDiv.textContent = data.message;
-              messageDiv.style.color = 'green'; // 成功消息用绿色显示
-              loadHistory(); // 保存后重新加载历史记录以显示最新项
+              fetchList(); // 保存后重新加载历史记录以显示最新项
             } else {
               messageDiv.textContent = data.message;
-              messageDiv.style.color = 'red'; // 失败消息用红色显示
+              messageDiv.style.color = 'red';
             }
           })
           .catch((error) => {
@@ -93,15 +96,13 @@
           });
       }
 
-      // 页面加载时加载历史记录
-      window.onload = loadHistory;
-
       document.getElementById('saveButton').addEventListener('click', saveText);
       document.addEventListener('keydown', (event) => {
         if (event.ctrlKey && event.key == 'Enter') {
           saveText();
         }
       });
+      document.addEventListener('DOMContentLoaded', fetchList);
     </script>
   </body>
 </html>

@@ -8,11 +8,11 @@ module.exports = (req, res, next) => {
     const fieldValue = req.body[field];
 
     if (!fieldValue || fieldValue.trim() === '') {
-      return utils.jsonResponse(res, 'failed', `${field} is required.`);
+      return utils.jsonResponse(res, 'failed', `Field ${field} is required`);
     }
 
     if (fieldValue.length > 8000) {
-      return utils.jsonResponse(res, 'failed', `${field} is too long.`);
+      return utils.jsonResponse(res, 'failed', `Field ${field} is too long`);
     }
   }
 

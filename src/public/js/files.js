@@ -1,146 +1,93 @@
-const fileInput = document.getElementById('fileInput');
-const uploadButton = document.getElementById('uploadButton');
-const refreshButton = document.getElementById('refreshButton');
-const uploadStatus = document.getElementById('message');
-const folder = document.getElementById('folder');
-const fetchStatus = document.getElementById('fetchStatus');
-const fileListTable = document
-  .getElementById('fileList')
-  .getElementsByTagName('tbody')[0];
+import { formatFileSize } from './utils/formatters.js';
+import { checkFile, addFile, fetchList } from './api/fileApi.js';
+
+const elements = {
+  fileInput: document.getElementById('fileInput'),
+  message: document.getElementById('message'),
+  folder: document.getElementById('folder'),
+  listStatus: document.getElementById('fetchStatus'),
+  fileList: document
+    .getElementById('fileList')
+    .getElementsByTagName('tbody')[0],
+};
 
 let dirname = '';
 
-async function handleFileUpload() {
-  uploadStatus.textContent = '';
-  uploadStatus.style.color = '';
-
-  const file = fileInput.files[0];
-  if (!file) return;
-
+async function updateList() {
   try {
-    const checkResponse = await fetch('/files/check', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        dirname,
-        filename: file.name,
-      }),
-    });
+    elements.listStatus.textContent = '';
+    elements.listStatus.style.color = '';
 
-    const checkResult = await checkResponse.json();
-    if (checkResult.status !== 'success') {
-      uploadStatus.textContent = `${checkResult.message} (${checkResponse.status})`;
-      return;
+    const result = await fetchList(dirname);
+
+    if (result.status !== 'success') {
+      elements.listStatus.textContent = result.message;
+      elements.listStatus.style.color = 'red';
     }
 
-    const formData = new FormData();
-    formData.append(
-      'metadata',
-      JSON.stringify({
-        dirname,
-        filename: file.name,
-        fileSize: file.size,
-      })
-    );
-    formData.append('file', file);
+    elements.folder.textContent = result.data.folder;
+    elements.fileList.innerHTML = '';
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/files/add', true);
-
-    xhr.upload.onprogress = function (e) {
-      if (e.lengthComputable) {
-        const percentComplete = (e.loaded / e.total) * 100;
-        uploadStatus.textContent = percentComplete.toFixed(2) + '%';
-      }
-    };
-
-    xhr.onload = function () {
-      const jsonResponse = JSON.parse(xhr.responseText);
-      uploadStatus.textContent = `${jsonResponse.message} (${xhr.status})`;
-      fetchFileList();
-    };
-
-    xhr.send(formData);
-  } catch (error) {
-    uploadStatus.textContent = error.message;
-    uploadStatus.style.color = 'red';
-  }
-}
-
-function formatFileSize(bytes) {
-  if (!bytes) return '';
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-  if (bytes < 1024 * 1024 * 1024)
-    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
-}
-
-async function fetchFileList() {
-  try {
-    fetchStatus.textContent = '';
-    fetchStatus.style.color = '';
-
-    const response = await fetch('/files/list', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ dirname }),
-    });
-    const json = await response.json();
-    fileListTable.innerHTML = '';
-
-    folder.textContent = json.data.folder;
-    if (json.status && json.status !== 'success') {
-      fetchStatus.textContent = json.message;
-      fetchStatus.style.color = 'red';
-    } else {
-      fetchStatus.textContent = '';
-      fetchStatus.style.color = '';
-    }
-
-    json.data.files.forEach((file) => {
-      const tr = document.createElement('tr');
-      const fileNameCell = document.createElement('td');
-      const fileSizeCell = document.createElement('td');
-      const fileTimeCell = document.createElement('td');
-
-      const downloadLink = document.createElement('a');
-
-      let fileName = encodeURIComponent(file.path);
-      if (file.type === 'directory') {
-        downloadLink.href = `/files/${fileName}`;
-        downloadLink.onclick = function (event) {
-          event.preventDefault();
-          dirname = file.path;
-          fetchFileList();
-        };
-      } else {
-        downloadLink.href = `/files/download/${fileName}`;
-      }
-      downloadLink.textContent = file.name;
-      downloadLink.className = 'download-link';
-      fileNameCell.appendChild(downloadLink);
-      fileSizeCell.textContent = formatFileSize(file.size);
-      fileTimeCell.textContent = file.uploadTime;
-
-      tr.appendChild(fileNameCell);
-      tr.appendChild(fileSizeCell);
-      tr.appendChild(fileTimeCell);
-
-      fileListTable.appendChild(tr);
+    result.data.files.forEach((file) => {
+      elements.fileList.appendChild(createFileRow(file));
     });
   } catch (error) {
     console.error('Error:', error);
-    fetchStatus.textContent = error.message;
-    fetchStatus.style.color = 'red';
+    elements.listStatus.textContent = error.message;
+    elements.listStatus.style.color = 'red';
   }
 }
 
-uploadButton.addEventListener('click', handleFileUpload);
-refreshButton.addEventListener('click', fetchFileList);
+async function handleUpload() {
+  elements.message.textContent = '';
+  elements.message.style.color = '';
 
-fetchFileList();
+  const file = elements.fileInput.files[0];
+  if (!file) return;
+
+  try {
+    const checkResult = await checkFile(dirname, file.name);
+    if (checkResult.status !== 'success') {
+      elements.message.textContent = checkResult.message;
+      elements.message.style.color = 'red';
+      return;
+    }
+
+    await addFile(dirname, file, (progress) => {
+      elements.message.textContent = progress.toFixed(2) + '%';
+    }).then((res) => (elements.message.textContent = res.message));
+    await updateList();
+  } catch (error) {
+    elements.message.textContent = error.message;
+    elements.message.style.color = 'red';
+  }
+}
+
+function createFileRow(file) {
+  const tr = document.createElement('tr');
+  const fileName = encodeURIComponent(file.path);
+  const href =
+    file.type === 'directory'
+      ? `/files/${fileName}`
+      : `/files/download/${fileName}`;
+
+  tr.innerHTML = `
+    <td><a href="${href}" class="${file.type === 'directory' ? 'directory' : ''}">${file.name}</a></td>
+    <td>${formatFileSize(file.size)}</td>
+    <td>${file.uploadTime}</td>
+  `;
+
+  if (file.type === 'directory') {
+    tr.querySelector('a').addEventListener('click', (e) => {
+      e.preventDefault();
+      dirname = file.path;
+      updateList();
+    });
+  }
+
+  return tr;
+}
+
+document.getElementById('uploadButton').addEventListener('click', handleUpload);
+document.getElementById('refreshButton').addEventListener('click', updateList);
+document.addEventListener('DOMContentLoaded', updateList);

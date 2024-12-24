@@ -1,66 +1,53 @@
-const messageDiv = document.getElementById('message');
+import { formatDate } from './utils/formatters.js';
+import { fetchList, addText } from './api/textApi.js';
 
-function fetchList() {
-  fetch('/text/list')
-    .then((response) => response.json())
-    .then((json) => {
-      const historyList = document.getElementById('history-list');
-      historyList.innerHTML = ''; // Clear history list
-      json.data.forEach((item) => {
-        const listItem = document.createElement('li');
-        listItem.textContent = `${new Date(item.timestamp).toLocaleString(
-          'en-SG',
-          { dateStyle: 'short', timeStyle: 'short', hour12: false }
-        )}: ${item.text}`;
-        listItem.addEventListener('click', () => {
-          const textArea = document.getElementById('text-area');
-          textArea.value = item.text;
-          textArea.select();
-          document.execCommand('copy');
-          messageDiv.textContent = 'Copied to clipboard';
-        });
-        historyList.prepend(listItem);
-      });
-    })
-    .catch((error) => {
-      console.error('Error loading history:', error);
+const messageDiv = document.getElementById('message');
+const textArea = document.getElementById('text-area');
+const historyList = document.getElementById('history-list');
+
+async function updateList() {
+  try {
+    const data = await fetchList();
+    historyList.innerHTML = '';
+    data.forEach((item) => {
+      const listItem = document.createElement('li');
+      listItem.textContent = `${formatDate(item.timestamp)}: ${item.text}`;
+      listItem.addEventListener('click', () => handleCopy(item.text));
+      historyList.prepend(listItem);
     });
+  } catch (error) {
+    console.error('Error loading history:', error);
+  }
 }
 
-function saveText() {
+async function handleSave() {
   messageDiv.textContent = '';
   messageDiv.style.color = '';
-  const text = document.getElementById('text-area').value;
-  fetch('/text/add', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ text: text }),
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.status === 'success') {
-        messageDiv.textContent = data.message;
-        fetchList(); // Reload history list to show the latest item
-      } else {
-        messageDiv.textContent = data.message;
-        messageDiv.style.color = 'red';
-      }
-    })
-    .catch((error) => {
-      console.error(
-        'There has been a problem with your fetch operation:',
-        error
-      );
-    });
+  try {
+    const result = await addText(textArea.value);
+    messageDiv.textContent = result.message;
+    if (result.status === 'success') {
+      await updateList();
+    } else {
+      messageDiv.style.color = 'red';
+    }
+  } catch (error) {
+    console.error('Error saving text:', error);
+    messageDiv.textContent = error.message;
+    messageDiv.style.color = 'red';
+  }
 }
 
-document.getElementById('saveButton').addEventListener('click', saveText);
-document.getElementById('refreshButton').addEventListener('click', fetchList);
+function handleCopy(text) {
+  textArea.value = text;
+  textArea.select();
+  document.execCommand('copy');
+  messageDiv.textContent = 'Copied to clipboard';
+}
+
+document.getElementById('saveButton').addEventListener('click', handleSave);
+document.getElementById('refreshButton').addEventListener('click', updateList);
 document.addEventListener('keydown', (event) => {
-  if (event.ctrlKey && event.key == 'Enter') {
-    saveText();
-  }
+  if (event.ctrlKey && event.key === 'Enter') handleSave();
 });
-document.addEventListener('DOMContentLoaded', fetchList);
+document.addEventListener('DOMContentLoaded', updateList);

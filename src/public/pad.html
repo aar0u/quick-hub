@@ -5,104 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Temp Pad</title>
     <link rel="stylesheet" href="css/pico.min.css" />
-    <style>
-      textarea {
-        width: 100%;
-        height: 200px;
-        padding: 0.5rem;
-        font-size: 1rem;
-        resize: vertical;
-      }
-      button {
-        margin-top: 1rem;
-        margin-bottom: 1rem;
-        padding: 0.5rem 1rem;
-        cursor: pointer;
-      }
-      li {
-        cursor: pointer;
-      }
-    </style>
+    <link rel="stylesheet" href="css/pad.css" />
   </head>
   <body>
     <div class="container">
       <h1>Temp Pad <a href="files.html">File Server</a></h1>
       <textarea id="text-area" placeholder="Text here..."></textarea>
       <button id="saveButton">Save</button>
-      <button onclick="fetchList()">Refresh</button>
+      <button id="refreshButton">Refresh</button>
       <span id="message"></span>
       <h2>List</h2>
       <ul id="history-list"></ul>
     </div>
-    <script>
-      const messageDiv = document.getElementById('message');
-      function fetchList() {
-        fetch('/text/list')
-          .then((response) => response.json())
-          .then((json) => {
-            const historyList = document.getElementById('history-list');
-            historyList.innerHTML = ''; // 清空历史记录列表
-            json.data.forEach((item) => {
-              const listItem = document.createElement('li');
-              listItem.textContent = `${new Date(item.timestamp).toLocaleString(
-                'en-SG',
-                { dateStyle: 'short', timeStyle: 'short', hour12: false }
-              )}: ${item.text}`;
-              listItem.addEventListener('click', () => {
-                // 点击时获取textarea元素并设置其值为点击的列表项文本
-                const textArea = document.getElementById('text-area');
-                textArea.value = item.text;
-
-                textArea.select();
-                document.execCommand('copy');
-                messageDiv.textContent = 'Copied to clipboard';
-              });
-              historyList.prepend(listItem);
-            });
-          })
-          .catch((error) => {
-            console.error('Error loading history:', error);
-          });
-      }
-
-      function saveText() {
-        messageDiv.textContent = '';
-        messageDiv.style.color = '';
-        const text = document.getElementById('text-area').value;
-        fetch('/text/add', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ text: text }),
-        })
-          .then((response) => {
-            return response.json();
-          })
-          .then((data) => {
-            if (data.status === 'success') {
-              messageDiv.textContent = data.message;
-              fetchList(); // 保存后重新加载历史记录以显示最新项
-            } else {
-              messageDiv.textContent = data.message;
-              messageDiv.style.color = 'red';
-            }
-          })
-          .catch((error) => {
-            console.error(
-              'There has been a problem with your fetch operation:',
-              error
-            );
-          });
-      }
-
-      document.getElementById('saveButton').addEventListener('click', saveText);
-      document.addEventListener('keydown', (event) => {
-        if (event.ctrlKey && event.key == 'Enter') {
-          saveText();
-        }
-      });
-      document.addEventListener('DOMContentLoaded', fetchList);
-    </script>
+    <script type="module" src="js/pad.js"></script>
   </body>
 </html>

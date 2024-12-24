@@ -1,0 +1,30 @@
+#fileList {
+  font-size: medium;
+  width: 100%;
+  border-collapse: collapse;
+}
+#fileList th,
+#fileList td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+#fileList tr:hover {
+  background-color: #f5f5f5;
+}
+#fileList th {
+  background-color: #f2f2f2;
+}
+span[role='button'] {
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  display: inline-block;
+}
+#folder {
+  font-size: medium;
+}
+#fetchStatus {
+  font-size: medium;
+  font-weight: normal;
+}

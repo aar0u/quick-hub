@@ -1,14 +1,16 @@
 'use strict';
 
 const app = require('./app');
-
-const host = '0.0.0.0'; // 监听所有接口
-const port = process.env.PORT || 80;
+const { port, host } = require('./config');
 
 const server = app.listen(port, host, () => {
-  const ip = getIP();
-  console.log(Object.keys(ip)[0], Object.values(ip)[0]);
   console.log(`running on http://${host}:${port}`);
+  const ip = getIP();
+  for (const [key, value] of Object.entries(ip)) {
+    console.log(
+      `${key}: ${value.map((ip) => `http://${ip}:${port}`).join(', ')}`
+    );
+  }
 });
 
 server.timeout = 1000 * 60 * 30; // 30 minutes
@@ -16,18 +18,18 @@ server.timeout = 1000 * 60 * 30; // 30 minutes
 function getIP() {
   const { networkInterfaces } = require('os');
   const nets = networkInterfaces();
-  const ip = Object.create(null); // Or just '{}', an empty object
+  const ip = {};
 
   for (const name of Object.keys(nets)) {
     for (const net of nets[name]) {
-      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-      // 'IPv4' is in Node <= 17, from 18 it's a number 4 or 6
       const familyV4Value = typeof net.family === 'string' ? 'IPv4' : 4;
       if (net.family === familyV4Value && !net.internal) {
-        if (!ip[name]) {
-          ip[name] = [];
+        if (name === 'en0' || name === 'eth0' || name === 'wlan0') {
+          if (!ip[name]) {
+            ip[name] = [];
+          }
+          ip[name].push(net.address);
         }
-        ip[name].push(net.address);
       }
     }
   }

@@ -24,7 +24,15 @@ function getIP() {
     for (const net of nets[name]) {
       const familyV4Value = typeof net.family === 'string' ? 'IPv4' : 4;
       if (net.family === familyV4Value && !net.internal) {
-        if (name === 'en0' || name === 'eth0' || name === 'wlan0') {
+        // Check common Wi-Fi interface names across different OS
+        if (
+          name === 'en0' || // macOS Wi-Fi
+          name === 'eth0' || // Linux Ethernet
+          name.toLowerCase().includes('wi-fi') || // Windows Wi-Fi
+          name.toLowerCase().includes('wireless') || // Generic Wireless
+          name.toLowerCase().includes('wlan') || // Linux Wi-Fi
+          name.toLowerCase().includes('wlp') // Linux Wi-Fi (newer naming)
+        ) {
           if (!ip[name]) {
             ip[name] = [];
           }

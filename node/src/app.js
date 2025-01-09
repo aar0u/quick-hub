@@ -17,7 +17,7 @@ if (!fs.existsSync(workingDir)) {
 // Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../../static')));
 
 // Routes
 app.use('/text', textRoutes);
@@ -25,7 +25,7 @@ app.use('/files', fileRoutes);
 
 // Default route
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'pad.html'));
+  res.sendFile(path.join(__dirname, '../../static', 'pad.html'));
 });
 
 module.exports = app;

@@ -70,7 +70,7 @@ const uploadHandler = (req, res) => {
       try {
         metadata = JSON.parse(value);
       } catch (error) {
-        console.error('Error parsing metadata:', error);
+        console.error('Failed to parse metadata:', error);
       }
     }
   });
@@ -119,14 +119,14 @@ const uploadHandler = (req, res) => {
     });
 
     writeStream.on('error', (err) => {
-      console.error(`Error uploading file: ${err.message}.`);
-      utils.jsonResponse(res, 'failed', 'Error uploading file');
+      console.error(`Failed to handle file: ${err.message}.`);
+      utils.jsonResponse(res, 'failed', 'Failed to handle file');
     });
   });
 
   busboy.on('error', (err) => {
     console.error('Busboy error:', err);
-    utils.jsonResponse(res, 'failed', 'Upload failed');
+    utils.jsonResponse(res, 'failed', 'Failed to handle file');
   });
 
   req.pipe(busboy);

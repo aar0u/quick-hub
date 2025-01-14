@@ -1,9 +1,9 @@
-package com.github.aar0u.temphub.service
+package com.github.aar0u.quickhub.service
 
-import com.github.aar0u.temphub.controller.FileController
-import com.github.aar0u.temphub.controller.TextController
-import com.github.aar0u.temphub.model.Config
-import com.github.aar0u.temphub.util.NetworkUtils
+import com.github.aar0u.quickhub.controller.FileController
+import com.github.aar0u.quickhub.controller.TextController
+import com.github.aar0u.quickhub.model.Config
+import com.github.aar0u.quickhub.util.NetworkUtils
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
 

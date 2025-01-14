@@ -1,4 +1,4 @@
-package com.github.aar0u.temphub.util
+package com.github.aar0u.quickhub.util
 
 object FileUtils {
     fun trimFromBeginning(

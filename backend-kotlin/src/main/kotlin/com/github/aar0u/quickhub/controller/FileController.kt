@@ -1,10 +1,10 @@
-package com.github.aar0u.temphub.controller
+package com.github.aar0u.quickhub.controller
 
-import com.github.aar0u.temphub.model.ApiResponse
-import com.github.aar0u.temphub.model.Config
-import com.github.aar0u.temphub.model.FileInfo
-import com.github.aar0u.temphub.service.Loggable
-import com.github.aar0u.temphub.util.FileUtils
+import com.github.aar0u.quickhub.model.ApiResponse
+import com.github.aar0u.quickhub.model.Config
+import com.github.aar0u.quickhub.model.FileInfo
+import com.github.aar0u.quickhub.service.Loggable
+import com.github.aar0u.quickhub.util.FileUtils
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import fi.iki.elonen.NanoHTTPD

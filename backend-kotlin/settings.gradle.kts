@@ -1,1 +1,1 @@
-rootProject.name = "temp-hub"
+rootProject.name = "quick-hub"

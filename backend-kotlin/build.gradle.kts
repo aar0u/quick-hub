@@ -5,7 +5,7 @@ plugins {
     id("com.gradleup.shadow") version "8.3.5"
 }
 
-group = "com.github.aar0u.temphub"
+group = "com.github.aar0u.quickhub"
 version = "1.0"
 
 repositories {
@@ -27,7 +27,7 @@ kotlin {
 }
 
 application {
-    mainClass.set("com.github.aar0u.temphub.MainKt")
+    mainClass.set("com.github.aar0u.quickhub.MainKt")
 }
 
 // Add a custom task to copy static files to resources during development
@@ -49,15 +49,17 @@ tasks.jar {
         into("static")
         include("**/*")
     }
-
-// Configure manifest
-    manifest {
-        attributes["Main-Class"] = "com.github.aar0u.temphub.MainKt"
-    }
 }
 
 tasks.shadowJar {
     archiveClassifier.set("fat")
+
+    dependencies {
+        exclude(dependency("org.jetbrains.kotlin:kotlin-stdlib"))
+        exclude(dependency("org.jetbrains:annotations"))
+        exclude(dependency("ch.qos.logback:logback-classic"))
+        exclude(dependency("org.slf4j:slf4j-api"))
+    }
 
     // Inherit configurations from the standard jar task
     from(tasks.jar.get().outputs)
@@ -65,11 +67,11 @@ tasks.shadowJar {
 
 spotless {
     kotlin {
-        target("src/**/*.kt") // 目标目录
-        ktlint("0.50.0") // 使用 Ktlint 格式化 Kotlin 代码
+        target("src/**/*.kt")
+        ktlint("0.50.0")
     }
     kotlinGradle {
-        target("*.gradle.kts") // 格式化 Gradle Kotlin DSL 文件
+        target("*.gradle.kts")
         ktlint()
     }
 }

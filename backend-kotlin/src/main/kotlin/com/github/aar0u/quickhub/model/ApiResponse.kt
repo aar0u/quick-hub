@@ -1,4 +1,4 @@
-package com.github.aar0u.temphub.model
+package com.github.aar0u.quickhub.model
 
 data class ApiResponse(
     val status: String,

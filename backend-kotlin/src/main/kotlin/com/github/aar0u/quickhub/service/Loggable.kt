@@ -1,4 +1,4 @@
-package com.github.aar0u.temphub.service
+package com.github.aar0u.quickhub.service
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory

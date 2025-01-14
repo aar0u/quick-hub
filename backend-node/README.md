@@ -1,6 +1,6 @@
-# Temp-Pad
+# Quick Hub
 
-Temp-Pad is a web application designed for quick content and file sharing between computers and phones within a home environment.
+Quick Hub is a web application designed for quick content and file sharing between computers and phones within a home environment.
 
 ## Installation
 

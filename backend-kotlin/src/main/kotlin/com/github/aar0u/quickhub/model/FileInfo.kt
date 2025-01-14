@@ -1,4 +1,4 @@
-package com.github.aar0u.temphub.model
+package com.github.aar0u.quickhub.model
 
 data class FileInfo(
     val name: String,

@@ -1,4 +1,4 @@
-package com.github.aar0u.temphub.util
+package com.github.aar0u.quickhub.util
 
 import java.net.NetworkInterface
 

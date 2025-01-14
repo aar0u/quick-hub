@@ -1,7 +1,7 @@
-package com.github.aar0u.temphub
+package com.github.aar0u.quickhub
 
-import com.github.aar0u.temphub.model.Config
-import com.github.aar0u.temphub.service.HttpService
+import com.github.aar0u.quickhub.model.Config
+import com.github.aar0u.quickhub.service.HttpService
 import java.io.File
 
 fun main(args: Array<String>) {

@@ -1,7 +1,7 @@
-package com.github.aar0u.temphub.controller
+package com.github.aar0u.quickhub.controller
 
-import com.github.aar0u.temphub.model.ApiResponse
-import com.github.aar0u.temphub.service.Loggable
+import com.github.aar0u.quickhub.model.ApiResponse
+import com.github.aar0u.quickhub.service.Loggable
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken

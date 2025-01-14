@@ -1,17 +1,16 @@
 package com.github.aar0u.temphub.controller
 
 import com.github.aar0u.temphub.model.ApiResponse
+import com.github.aar0u.temphub.service.Loggable
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import fi.iki.elonen.NanoHTTPD.IHTTPSession
 import fi.iki.elonen.NanoHTTPD.Response
 import fi.iki.elonen.NanoHTTPD.newFixedLengthResponse
-import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 
-class TextController {
-    private val log = LoggerFactory.getLogger(TextController::class.java)
+class TextController : Loggable {
     private val history: MutableList<Map<String, String>> =
         mutableListOf(
             mapOf(

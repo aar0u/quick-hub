@@ -3,20 +3,19 @@ package com.github.aar0u.temphub.controller
 import com.github.aar0u.temphub.model.ApiResponse
 import com.github.aar0u.temphub.model.Config
 import com.github.aar0u.temphub.model.FileInfo
+import com.github.aar0u.temphub.service.Loggable
 import com.github.aar0u.temphub.util.FileUtils
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoHTTPD.getMimeTypeForFile
 import fi.iki.elonen.NanoHTTPD.newFixedLengthResponse
-import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileInputStream
 import java.nio.file.Paths
 import java.time.LocalDateTime
 
-class FileController(private val config: Config) {
-    private val log = LoggerFactory.getLogger(FileController::class.java)
+class FileController(private val config: Config) : Loggable {
     private val gson = GsonBuilder().create()
 
     fun handleFileList(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
@@ -49,10 +48,10 @@ class FileController(private val config: Config) {
                         status = "failed",
                         message = "Error listing files",
                         data =
-                            mapOf(
-                                "folder" to FileUtils.trimFromBeginning(fullPath.absolutePath, config.workingDir),
-                                "files" to fileInfos,
-                            ),
+                        mapOf(
+                            "folder" to FileUtils.trimFromBeginning(fullPath.absolutePath, config.workingDir),
+                            "files" to fileInfos,
+                        ),
                     ),
                 ),
             )
@@ -67,12 +66,12 @@ class FileController(private val config: Config) {
                     type = if (file.isDirectory) "directory" else "file",
                     size = if (file.isDirectory) null else file.length(),
                     uploadTime =
-                        config.dateTimeFormatter?.format(
-                            LocalDateTime.ofInstant(
-                                java.time.Instant.ofEpochMilli(file.lastModified()),
-                                java.time.ZoneId.systemDefault(),
-                            ),
+                    config.dateTimeFormatter?.format(
+                        LocalDateTime.ofInstant(
+                            java.time.Instant.ofEpochMilli(file.lastModified()),
+                            java.time.ZoneId.systemDefault(),
                         ),
+                    ),
                 ),
             )
         }
@@ -82,10 +81,10 @@ class FileController(private val config: Config) {
                 status = "success",
                 message = "Files listed successfully",
                 data =
-                    mapOf(
-                        "folder" to FileUtils.trimFromBeginning(fullPath.absolutePath, config.workingDir),
-                        "files" to fileInfos,
-                    ),
+                mapOf(
+                    "folder" to FileUtils.trimFromBeginning(fullPath.absolutePath, config.workingDir),
+                    "files" to fileInfos,
+                ),
             )
 
         return newFixedLengthResponse(

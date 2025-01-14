@@ -3,13 +3,11 @@ package com.github.aar0u.temphub.service
 import com.github.aar0u.temphub.controller.FileController
 import com.github.aar0u.temphub.controller.TextController
 import com.github.aar0u.temphub.model.Config
+import com.github.aar0u.temphub.util.NetworkUtils
 import fi.iki.elonen.NanoHTTPD
-import org.slf4j.LoggerFactory
 import java.io.File
 
-class HttpServiceNano(private val config: Config) : NanoHTTPD(config.host, config.port) {
-    private val log = LoggerFactory.getLogger(HttpServiceNano::class.java)
-
+class HttpService(private val config: Config) : NanoHTTPD(config.host, config.port), Loggable {
     private val textController = TextController()
     private val fileController = FileController(config)
 
@@ -25,6 +23,23 @@ class HttpServiceNano(private val config: Config) : NanoHTTPD(config.host, confi
 
     init {
         File(config.workingDir).mkdirs()
+    }
+
+    override fun start() {
+        try {
+            log.info("Server started on port ${config.port}")
+
+            // Print all available interfaces
+            NetworkUtils.getIpAddresses().forEach { (name, addresses) ->
+                addresses.forEach { address ->
+                    log.info("$name: http://$address:${config.port}")
+                }
+            }
+
+            super.start()
+        } catch (e: Exception) {
+            log.error("Server error: ${e.message}", e)
+        }
     }
 
     override fun serve(session: IHTTPSession): Response {

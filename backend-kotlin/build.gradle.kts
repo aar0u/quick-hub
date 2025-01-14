@@ -1,7 +1,8 @@
 plugins {
     kotlin("jvm") version "1.9.22"
     application
-    id("com.diffplug.spotless") version "6.23.0"
+    id("com.diffplug.spotless") version "6.25.0"
+    id("com.gradleup.shadow") version "8.3.5"
 }
 
 group = "com.github.aar0u.temphub"
@@ -49,22 +50,26 @@ tasks.jar {
         include("**/*")
     }
 
-    // Configure manifest
+// Configure manifest
     manifest {
         attributes["Main-Class"] = "com.github.aar0u.temphub.MainKt"
     }
-
-    // Include all dependencies
-    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
 }
 
-// Spotless configuration
+tasks.shadowJar {
+    archiveClassifier.set("fat")
+
+    // Inherit configurations from the standard jar task
+    from(tasks.jar.get().outputs)
+}
+
 spotless {
     kotlin {
-        // Use ktlint for formatting
-        ktlint()
+        target("src/**/*.kt") // 目标目录
+        ktlint("0.50.0") // 使用 Ktlint 格式化 Kotlin 代码
     }
     kotlinGradle {
+        target("*.gradle.kts") // 格式化 Gradle Kotlin DSL 文件
         ktlint()
     }
 }

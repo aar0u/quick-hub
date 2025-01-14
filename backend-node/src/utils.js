@@ -9,10 +9,12 @@ function formatFileSize(bytes) {
 
 function trimFromBeginning(str, tar) {
   if (str.startsWith(tar)) {
-    // 如果字符串以指定的单词（后面跟一个空格）开始，则去除它
-    return str.substring(tar.length); // +1 是为了去除单词后面的空格
+    str = str.substring(tar.length);
   }
-  return str; // 如果字符串不是以指定的单词开始，则返回原始字符串
+  if (str.startsWith('/')) {
+    str = str.substring(1);
+  }
+  return str;
 }
 
 function jsonResponse(res, status, message, data = null) {

@@ -45,6 +45,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.os.Environment
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.annotation.RequiresApi
 
 private const val tag = "quick-hub"
 
@@ -59,17 +65,28 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Column1(
                         modifier = Modifier.padding(innerPadding),
-                        logText = logViewModel.logText.value
+                        logText = logViewModel.logText.value,
+                        onRequestAllFilesAccess = { requestAllFilesAccess() }
                     )
                 }
             }
         }
         logViewModel.startLogCapture()
     }
+
+    private fun requestAllFilesAccess() {
+        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+        intent.data = Uri.parse("package:$packageName")
+        startActivity(intent)
+    }
 }
 
 @Composable
-fun Column1(modifier: Modifier, logText: String) {
+fun Column1(
+    modifier: Modifier = Modifier,
+    logText: String,
+    onRequestAllFilesAccess: () -> Unit = {}
+) {
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -77,9 +94,18 @@ fun Column1(modifier: Modifier, logText: String) {
     ) {
         Button(
             onClick = {
-                Log.i(tag, "Starting HTTP server")
-                CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
-                    HttpService(Config(workingDir = "/sdcard", port = 3000)).start()
+                if (Environment.isExternalStorageManager()) {
+                    Log.i(tag, "Starting HTTP server")
+                    CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+                        HttpService(
+                            Config(
+                                workingDir = Environment.getExternalStorageDirectory().absolutePath,
+                                port = 3000
+                            )
+                        ).start()
+                    }
+                } else {
+                    onRequestAllFilesAccess()
                 }
             },
             modifier = Modifier
@@ -89,8 +115,8 @@ fun Column1(modifier: Modifier, logText: String) {
             contentPadding = PaddingValues(0.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.PlayArrow, 
-                contentDescription = null, 
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = null,
                 tint = Color.White,
             )
         }

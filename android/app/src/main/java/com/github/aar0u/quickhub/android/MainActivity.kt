@@ -48,9 +48,8 @@ import kotlinx.coroutines.withContext
 import android.os.Environment
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
-import androidx.annotation.RequiresApi
+import androidx.core.content.FileProvider
 
 private const val tag = "quick-hub"
 
@@ -66,7 +65,8 @@ class MainActivity : ComponentActivity() {
                     Column1(
                         modifier = Modifier.padding(innerPadding),
                         logText = logViewModel.logText.value,
-                        onRequestAllFilesAccess = { requestAllFilesAccess() }
+                        onRequestAllFilesAccess = { requestAllFilesAccess() },
+                        context = this
                     )
                 }
             }
@@ -85,7 +85,8 @@ class MainActivity : ComponentActivity() {
 fun Column1(
     modifier: Modifier = Modifier,
     logText: String,
-    onRequestAllFilesAccess: () -> Unit = {}
+    onRequestAllFilesAccess: () -> Unit = {},
+    context: MainActivity
 ) {
     Column(
         modifier = modifier.fillMaxSize(),
@@ -101,7 +102,24 @@ fun Column1(
                             Config(
                                 workingDir = Environment.getExternalStorageDirectory().absolutePath,
                                 port = 3000
-                            )
+                            ), listener = { file ->
+                                if (file.path.endsWith(".apk")) {
+                                    val apkUri = FileProvider.getUriForFile(
+                                        context,
+                                        "${context.packageName}.fileprovider",
+                                        file
+                                    )
+                                    Log.i(tag, "Install APK: $file")
+                                    val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                        setDataAndType(
+                                            apkUri,
+                                            "application/vnd.android.package-archive"
+                                        )
+                                    }
+                                    context.startActivity(installIntent)
+                                }
+                            }
                         ).start()
                     }
                 } else {
@@ -215,7 +233,8 @@ fun Column1Preview() {
         It should be long enough to go beyond the screen's boundaries.
         This is a very long text that will demonstrate the scrolling behavior.
         It should be long enough to go beyond the screen's boundaries.
-    """.trimIndent()
+    """.trimIndent(),
+                context = MainActivity()
             )
         }
     }

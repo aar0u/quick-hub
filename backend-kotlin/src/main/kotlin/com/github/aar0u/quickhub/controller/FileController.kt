@@ -3,6 +3,7 @@ package com.github.aar0u.quickhub.controller
 import com.github.aar0u.quickhub.model.ApiResponse
 import com.github.aar0u.quickhub.model.Config
 import com.github.aar0u.quickhub.model.FileInfo
+import com.github.aar0u.quickhub.service.HttpService
 import com.github.aar0u.quickhub.service.Loggable
 import com.github.aar0u.quickhub.util.FileUtils
 import com.google.gson.GsonBuilder
@@ -25,9 +26,9 @@ class FileController(private val config: Config) : Loggable {
         val jsonObject = gson.fromJson(jsonData, object : TypeToken<Map<String, String>>() {})
         val dirname = jsonObject["dirname"] ?: ""
         val fullPath = File(Paths.get(config.workingDir, dirname).toString())
+        log.info("Listing {}", fullPath)
 
         val fileInfos = mutableListOf<FileInfo>()
-
         if (fullPath.absolutePath != config.workingDir) {
             fileInfos.add(
                 FileInfo(
@@ -38,7 +39,6 @@ class FileController(private val config: Config) : Loggable {
             )
         }
 
-        // List directory contents
         if (!fullPath.exists()) {
             return newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK,
@@ -57,7 +57,6 @@ class FileController(private val config: Config) : Loggable {
             )
         }
 
-        // List directory contents
         fullPath.listFiles()?.filter { !it.name.startsWith(".") }?.forEach { file ->
             fileInfos.add(
                 FileInfo(
@@ -147,8 +146,10 @@ class FileController(private val config: Config) : Loggable {
         )
     }
 
-    fun handleFileAdd(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
-        // Parse metadata
+    fun handleFileAdd(
+        session: NanoHTTPD.IHTTPSession,
+        listener: HttpService.OnFileReceivedListener? = null,
+    ): NanoHTTPD.Response {
         val metadata =
             session.headers["x-file-metadata"]?.let { metadataStr ->
                 try {
@@ -171,17 +172,14 @@ class FileController(private val config: Config) : Loggable {
         val map = mutableMapOf<String, String>()
         session.parseBody(map)
 
-        val files = mutableListOf<FileInfo>()
         val tempFilePath = map["files"] ?: ""
+        log.info("Temp file: {}", tempFilePath)
         val tempFile = File(tempFilePath)
 
         try {
             targetFile.parentFile?.mkdirs()
-
-            // Copy file content
             tempFile.copyTo(targetFile)
 
-            // Log upload completion with colored output
             val stats = targetFile.length()
             val fileSizeFormatted = FileUtils.formatFileSize(stats)
             log.info(
@@ -193,15 +191,7 @@ class FileController(private val config: Config) : Loggable {
                 """.trimIndent(),
             )
 
-            files.add(
-                FileInfo(
-                    name = targetFile.name,
-                    path = FileUtils.trimFromBeginning(targetFile.absolutePath, config.workingDir),
-                    type = "file",
-                    size = targetFile.length(),
-                    uploadTime = config.dateTimeFormatter?.format(LocalDateTime.now()),
-                ),
-            )
+            listener?.onFileReceived(targetFile)
         } catch (e: Exception) {
             log.error("Failed to handle file", e)
             return newFixedLengthResponse(
@@ -222,8 +212,7 @@ class FileController(private val config: Config) : Loggable {
             gson.toJson(
                 ApiResponse(
                     status = "success",
-                    message = "Files uploaded successfully",
-                    data = files,
+                    message = "Files uploaded",
                 ),
             ),
         )

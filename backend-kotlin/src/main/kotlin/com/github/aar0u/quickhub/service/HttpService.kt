@@ -7,9 +7,13 @@ import com.github.aar0u.quickhub.util.NetworkUtils
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
 
-class HttpService(private val config: Config) : NanoHTTPD(config.host, config.port), Loggable {
+class HttpService(private val config: Config, private val listener: OnFileReceivedListener? = null) : NanoHTTPD(config.host, config.port), Loggable {
     private val textController = TextController()
     private val fileController = FileController(config)
+
+    fun interface OnFileReceivedListener {
+        fun onFileReceived(file: File)
+    }
 
     private val routes =
         mapOf(
@@ -18,7 +22,7 @@ class HttpService(private val config: Config) : NanoHTTPD(config.host, config.po
             "/text/add" to textController::handleTextAdd,
             "/files/list" to fileController::handleFileList,
             "/files/check" to fileController::handleFileCheck,
-            "/files/add" to fileController::handleFileAdd,
+            "/files/add" to { session -> fileController.handleFileAdd(session, listener) },
         )
 
     init {

@@ -10,13 +10,17 @@ android {
 
     defaultConfig {
         applicationId = "com.github.aar0u.quickhub.android"
-        minSdk = 30
+        minSdk = 21
         //noinspection OldTargetApi
         targetSdk = 33
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
+        }
     }
 
     buildTypes {

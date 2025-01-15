@@ -50,6 +50,11 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 
 private const val tag = "quick-hub"
 
@@ -65,8 +70,8 @@ class MainActivity : ComponentActivity() {
                     Column1(
                         modifier = Modifier.padding(innerPadding),
                         logText = logViewModel.logText.value,
-                        onRequestAllFilesAccess = { requestAllFilesAccess() },
-                        context = this
+                        onCheckStoragePermissions = { checkStoragePermissions() },
+                        onRequestStoragePermissions = { requestStoragePermissions() }
                     )
                 }
             }
@@ -74,10 +79,37 @@ class MainActivity : ComponentActivity() {
         logViewModel.startLogCapture()
     }
 
-    private fun requestAllFilesAccess() {
-        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-        intent.data = Uri.parse("package:$packageName")
-        startActivity(intent)
+    private fun requestStoragePermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+            intent.data = Uri.parse("package:$packageName")
+            startActivity(intent)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestPermissions(
+                arrayOf(
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ),
+                1
+            )
+        }
+    }
+
+    private fun checkStoragePermissions(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true // Permissions are granted by default on older Android versions
+        }
     }
 }
 
@@ -85,9 +117,10 @@ class MainActivity : ComponentActivity() {
 fun Column1(
     modifier: Modifier = Modifier,
     logText: String,
-    onRequestAllFilesAccess: () -> Unit = {},
-    context: MainActivity
+    onCheckStoragePermissions: () -> Boolean,
+    onRequestStoragePermissions: () -> Unit = {},
 ) {
+    val context = LocalContext.current
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -95,7 +128,7 @@ fun Column1(
     ) {
         Button(
             onClick = {
-                if (Environment.isExternalStorageManager()) {
+                if (onCheckStoragePermissions()) {
                     Log.i(tag, "Starting HTTP server")
                     CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
                         HttpService(
@@ -106,12 +139,13 @@ fun Column1(
                                 if (file.path.endsWith(".apk")) {
                                     val apkUri = FileProvider.getUriForFile(
                                         context,
-                                        "${context.packageName}.fileprovider",
+                                        "${context.packageName}.FileProvider",
                                         file
                                     )
                                     Log.i(tag, "Install APK: $file")
                                     val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                        flags =
+                                            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
                                         setDataAndType(
                                             apkUri,
                                             "application/vnd.android.package-archive"
@@ -123,7 +157,7 @@ fun Column1(
                         ).start()
                     }
                 } else {
-                    onRequestAllFilesAccess()
+                    onRequestStoragePermissions()
                 }
             },
             modifier = Modifier
@@ -157,7 +191,9 @@ fun AutoScrollingLog(logText: List<String>) {
     ) {
         itemsIndexed(logText) { index, log ->
             val rowColor =
-                if (log.lowercase().contains("error") or log.lowercase().contains("exception")) {
+                if (log.lowercase().contains("error") or log.lowercase()
+                        .contains("exception")
+                ) {
                     Color.Red
                 } else if (index % 2 == 0) {
                     Color.LightGray // Even rows
@@ -234,7 +270,7 @@ fun Column1Preview() {
         This is a very long text that will demonstrate the scrolling behavior.
         It should be long enough to go beyond the screen's boundaries.
     """.trimIndent(),
-                context = MainActivity()
+                onCheckStoragePermissions = { true }
             )
         }
     }

@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainColumn1(
                         modifier = Modifier.padding(innerPadding),
-                        logText = logViewModel.logText.value,
+                        logList = logViewModel.logList,
                         onCheckStoragePermissions = { checkStoragePermissions() },
                         onRequestStoragePermissions = { requestStoragePermissions() },
                         onReceiveApk = { installApk(file = it) }
@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainColumn1(
     modifier: Modifier = Modifier,
-    logText: String,
+    logList: List<String>,
     onCheckStoragePermissions: () -> Boolean = { true },
     onRequestStoragePermissions: () -> Unit = {},
     onReceiveApk: (File) -> Unit = {}
@@ -172,24 +172,22 @@ fun MainColumn1(
             )
         }
 
-        AutoScrollingLog(
-            logText = logText.lines()
-        )
+        AutoScrollingLog(logList)
     }
 }
 
 @Composable
-fun AutoScrollingLog(logText: List<String>) {
+fun AutoScrollingLog(logList: List<String>) {
     val listState = rememberLazyListState()
 
-    LaunchedEffect(logText.size) {
-        listState.animateScrollToItem(logText.size - 1)
+    LaunchedEffect(logList.size) {
+        listState.animateScrollToItem(logList.size)
     }
 
     LazyColumn(
         state = listState,
     ) {
-        itemsIndexed(logText) { index, log ->
+        itemsIndexed(logList) { index, log ->
             val rowColor =
                 if (log.lowercase().contains("error") or log.lowercase()
                         .contains("exception")
@@ -219,7 +217,7 @@ fun Column1Preview() {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             MainColumn1(
                 modifier = Modifier.padding(innerPadding),
-                logText = """
+                logList = """
         This is a very long text that will demonstrate the scrolling behavior.
         It should be long enough to go beyond the screen's boundaries.
         This is a very long text that will demonstrate the scrolling behavior.
@@ -238,7 +236,7 @@ fun Column1Preview() {
         It should be long enough to go beyond the screen's boundaries.
         This is a very long text that will demonstrate the scrolling behavior.
         It should be long enough to go beyond the screen's boundaries.
-    """.trimIndent()
+    """.lines()
             )
         }
     }

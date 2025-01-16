@@ -45,7 +45,7 @@ android {
 }
 
 dependencies {
-    implementation(files("lib/backend.jar"))
+    implementation("com.github.aar0u:quick-hub:1.0")
     implementation("org.slf4j:slf4j-android:1.7.36")
 
     implementation(libs.androidx.core.ktx)

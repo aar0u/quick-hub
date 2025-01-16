@@ -230,6 +230,7 @@ class FileController(private val config: Config) : Loggable {
             )
         }
 
+        log.info("Download started: ${file.absolutePath}")
         return newFixedLengthResponse(
             NanoHTTPD.Response.Status.OK,
             getMimeTypeForFile(file.name),

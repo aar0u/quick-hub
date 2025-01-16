@@ -1,11 +1,12 @@
 plugins {
     kotlin("jvm") version "1.9.22"
     application
+    id("maven-publish")
     id("com.diffplug.spotless") version "6.25.0"
     id("com.gradleup.shadow") version "8.3.5"
 }
 
-group = "com.github.aar0u.quickhub"
+group = "com.github.aar0u"
 version = "1.0"
 
 repositories {
@@ -30,8 +31,9 @@ application {
     mainClass.set("com.github.aar0u.quickhub.MainKt")
 }
 
-// Add a custom task to copy static files to resources during development
 tasks.register<Copy>("copyStaticFiles") {
+    description = "Copy static files to resources during development"
+    group = JavaBasePlugin.DOCUMENTATION_GROUP
     from("../static")
     into("build/resources/main/static")
 }
@@ -52,7 +54,21 @@ tasks.jar {
 }
 
 tasks.shadowJar {
+    // Inherit configurations from the standard jar task
+    from(tasks.jar.get().outputs)
+
     archiveClassifier.set("fat")
+}
+
+tasks.register<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("lib") {
+    from(tasks.jar.get().outputs)
+
+    description = "Library for Android"
+    group = JavaBasePlugin.DOCUMENTATION_GROUP
+
+    archiveClassifier.set("lib")
+
+    configurations = listOf(project.configurations.runtimeClasspath.get())
 
     dependencies {
         exclude(dependency("org.jetbrains.kotlin:kotlin-stdlib"))
@@ -60,9 +76,6 @@ tasks.shadowJar {
         exclude(dependency("ch.qos.logback:logback-classic"))
         exclude(dependency("org.slf4j:slf4j-api"))
     }
-
-    // Inherit configurations from the standard jar task
-    from(tasks.jar.get().outputs)
 }
 
 spotless {
@@ -73,5 +86,18 @@ spotless {
     kotlinGradle {
         target("*.gradle.kts")
         ktlint()
+    }
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            artifact(tasks.named("lib").get()) {
+                classifier = ""
+            }
+        }
+    }
+    repositories {
+        mavenLocal()
     }
 }

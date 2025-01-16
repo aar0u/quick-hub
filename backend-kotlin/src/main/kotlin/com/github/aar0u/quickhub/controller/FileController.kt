@@ -115,7 +115,7 @@ class FileController(private val config: Config) : Loggable {
         }
 
         val filePath = Paths.get(config.workingDir, dirname, filename).toString()
-        if (File(filePath).exists()) {
+        if (!config.overwrite && File(filePath).exists()) {
             log.info(
                 """
                 File already exists:
@@ -178,7 +178,7 @@ class FileController(private val config: Config) : Loggable {
 
         try {
             targetFile.parentFile?.mkdirs()
-            tempFile.copyTo(targetFile)
+            tempFile.copyTo(targetFile, config.overwrite)
 
             val stats = targetFile.length()
             val fileSizeFormatted = FileUtils.formatFileSize(stats)

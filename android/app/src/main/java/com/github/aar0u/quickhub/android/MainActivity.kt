@@ -155,6 +155,7 @@ fun MainColumn1(
                         startServer { file -> onReceiveApk(file) }
                     } else {
                         onRequestStoragePermissions()
+                        isBusy.value = false
                     }
                 }
             },

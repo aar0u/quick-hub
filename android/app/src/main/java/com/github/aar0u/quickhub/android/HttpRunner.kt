@@ -31,8 +31,13 @@ object HttpRunner {
     fun startServer(listener: (File) -> Unit) {
         serverCoroutine?.cancel()
         serverCoroutine = serverScope.launch {
+            val config = Config(
+                Environment.getExternalStorageDirectory().absolutePath,
+                3000,
+                overwrite = true
+            )
             httpService = HttpService(
-                Config(Environment.getExternalStorageDirectory().absolutePath, 3000), listener
+                config, listener
             )
             httpService?.start()
             delay(500)

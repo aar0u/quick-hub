@@ -8,4 +8,5 @@ data class Config(
     val host: String = System.getenv("HOST") ?: "0.0.0.0",
     val dateTimeFormatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
     val staticDir: String = "/static",
+    val overwrite: Boolean = false,
 )

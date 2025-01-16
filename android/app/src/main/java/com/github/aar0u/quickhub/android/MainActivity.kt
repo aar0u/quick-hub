@@ -1,6 +1,13 @@
 package com.github.aar0u.quickhub.android
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,14 +26,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,32 +42,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.github.aar0u.quickhub.model.Config
-import com.github.aar0u.quickhub.service.HttpService
-import com.github.aar0u.android.ui.theme.Theme1
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import android.os.Environment
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import androidx.core.content.FileProvider
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import com.github.aar0u.android.ui.theme.Theme1
+import com.github.aar0u.quickhub.android.HttpRunner.isBusy
+import com.github.aar0u.quickhub.android.HttpRunner.isServerRunning
+import com.github.aar0u.quickhub.android.HttpRunner.startServer
+import com.github.aar0u.quickhub.android.HttpRunner.stopServer
+import java.io.File
 
 private const val tag = "quick-hub"
 
 class MainActivity : ComponentActivity() {
-    private val logViewModel: WorkerViewModel by viewModels()
+    private val logViewModel: LogViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,11 +62,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             Theme1 {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column1(
+                    MainColumn1(
                         modifier = Modifier.padding(innerPadding),
                         logText = logViewModel.logText.value,
                         onCheckStoragePermissions = { checkStoragePermissions() },
-                        onRequestStoragePermissions = { requestStoragePermissions() }
+                        onRequestStoragePermissions = { requestStoragePermissions() },
+                        onReceiveApk = { installApk(file = it) }
                     )
                 }
             }
@@ -111,16 +107,36 @@ class MainActivity : ComponentActivity() {
             true // Permissions are granted by default on older Android versions
         }
     }
+
+    private fun installApk(file: File) {
+        if (file.path.endsWith(".apk")) {
+            val apkUri = FileProvider.getUriForFile(
+                this,
+                "${this.packageName}.FileProvider",
+                file
+            )
+            Log.i(tag, "Install APK: $file")
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                flags =
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                setDataAndType(
+                    apkUri,
+                    "application/vnd.android.package-archive"
+                )
+            }
+            this.startActivity(installIntent)
+        }
+    }
 }
 
 @Composable
-fun Column1(
+fun MainColumn1(
     modifier: Modifier = Modifier,
     logText: String,
-    onCheckStoragePermissions: () -> Boolean,
+    onCheckStoragePermissions: () -> Boolean = { true },
     onRequestStoragePermissions: () -> Unit = {},
+    onReceiveApk: (File) -> Unit = {}
 ) {
-    val context = LocalContext.current
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -128,50 +144,33 @@ fun Column1(
     ) {
         Button(
             onClick = {
-                if (onCheckStoragePermissions()) {
-                    Log.i(tag, "Starting HTTP server")
-                    CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
-                        HttpService(
-                            Config(
-                                workingDir = Environment.getExternalStorageDirectory().absolutePath,
-                                port = 3000
-                            ), listener = { file ->
-                                if (file.path.endsWith(".apk")) {
-                                    val apkUri = FileProvider.getUriForFile(
-                                        context,
-                                        "${context.packageName}.FileProvider",
-                                        file
-                                    )
-                                    Log.i(tag, "Install APK: $file")
-                                    val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                                        flags =
-                                            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                        setDataAndType(
-                                            apkUri,
-                                            "application/vnd.android.package-archive"
-                                        )
-                                    }
-                                    context.startActivity(installIntent)
-                                }
-                            }
-                        ).start()
-                    }
+                if (isBusy.value) return@Button
+                isBusy.value = true
+                if (isServerRunning.value) {
+                    Log.i(tag, "Stopping HTTP server")
+                    stopServer()
                 } else {
-                    onRequestStoragePermissions()
+                    if (onCheckStoragePermissions()) {
+                        Log.i(tag, "Starting HTTP server")
+                        startServer { file -> onReceiveApk(file) }
+                    } else {
+                        onRequestStoragePermissions()
+                    }
                 }
             },
             modifier = Modifier
                 .size(60.dp)
-                .clip(CircleShape)
-                .background(Color.Blue),
-            contentPadding = PaddingValues(0.dp)
+                .clip(CircleShape),
+            contentPadding = PaddingValues(0.dp),
+            colors = ButtonDefaults.buttonColors(),
+            enabled = !isBusy.value
         ) {
             Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = null,
-                tint = Color.White,
+                imageVector = if (isServerRunning.value) Icons.Rounded.Close else Icons.Rounded.PlayArrow,
+                contentDescription = if (isServerRunning.value) "Stop Server" else "Start Server",
             )
         }
+
         AutoScrollingLog(
             logText = logText.lines()
         )
@@ -212,43 +211,12 @@ fun AutoScrollingLog(logText: List<String>) {
     }
 }
 
-class WorkerViewModel : ViewModel() {
-    var logText = mutableStateOf("")
-    private var logJob: Job? = null
-
-    fun startLogCapture() {
-        logJob?.cancel() // 防止重复任务
-        logJob = viewModelScope.launch(Dispatchers.IO) {
-            val process = ProcessBuilder(
-                "logcat",
-                "-T", "0", // 从头开始读取
-                "-v", "time", // 使用时间戳格式
-                "-s", "quick-hub:V"
-            ).start()
-            process.inputStream.bufferedReader().useLines { lines ->
-                lines.forEach { line ->
-                    if (line.contains("beginning of main")) return@forEach
-                    val cleanedLine =
-                        line.substringBefore(".") + " " + line.substringAfter("):")
-                    withContext(Dispatchers.Main) {
-                        logText.value += "$cleanedLine\n"
-                    }
-                }
-            }
-        }
-    }
-
-    override fun onCleared() {
-        logJob?.cancel() // ViewModel销毁时停止日志
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun Column1Preview() {
     Theme1 {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            Column1(
+            MainColumn1(
                 modifier = Modifier.padding(innerPadding),
                 logText = """
         This is a very long text that will demonstrate the scrolling behavior.
@@ -269,8 +237,7 @@ fun Column1Preview() {
         It should be long enough to go beyond the screen's boundaries.
         This is a very long text that will demonstrate the scrolling behavior.
         It should be long enough to go beyond the screen's boundaries.
-    """.trimIndent(),
-                onCheckStoragePermissions = { true }
+    """.trimIndent()
             )
         }
     }

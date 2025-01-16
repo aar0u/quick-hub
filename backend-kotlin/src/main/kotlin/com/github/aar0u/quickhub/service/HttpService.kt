@@ -6,8 +6,10 @@ import com.github.aar0u.quickhub.model.Config
 import com.github.aar0u.quickhub.util.NetworkUtils
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
+import java.lang.Thread.sleep
 
-class HttpService(private val config: Config, private val listener: OnFileReceivedListener? = null) : NanoHTTPD(config.host, config.port), Loggable {
+class HttpService(private val config: Config, private val listener: OnFileReceivedListener? = null) :
+    NanoHTTPD(config.host, config.port), Loggable {
     private val textController = TextController()
     private val fileController = FileController(config)
 
@@ -31,19 +33,26 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
 
     override fun start() {
         try {
-            log.info("Server started on port ${config.port}")
-
             // Print all available interfaces
             NetworkUtils.getIpAddresses().forEach { (name, addresses) ->
                 addresses.forEach { address ->
                     log.info("$name: http://$address:${config.port}")
                 }
             }
-
             super.start()
+            log.info("Server started on port ${config.port}")
         } catch (e: Exception) {
+            stop()
             log.error("Server error: ${e.message}", e)
         }
+    }
+
+    override fun stop() {
+        super.stop()
+        while (super.isAlive()) {
+            sleep(100)
+        }
+        log.info("Server stopped on port ${config.port}")
     }
 
     override fun serve(session: IHTTPSession): Response {

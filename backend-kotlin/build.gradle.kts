@@ -92,6 +92,7 @@ spotless {
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
+            // Publish lib jar but without classifier
             artifact(tasks.named("lib").get()) {
                 classifier = ""
             }

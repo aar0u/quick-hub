@@ -1,0 +1,85 @@
+# .github/workflows/main.yml (放在项目根目录)
+name: Main CI Pipeline
+
+on:
+  push:
+    paths:
+      - 'backend-kotlin/**'
+      - 'android/**'
+      - '.github/workflows/**'
+
+permissions:
+  contents: write
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend-kotlin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Build with Gradle
+        run: |
+          ./gradlew lib shadowJar publishToMavenLocal
+          for file in build/libs/*-lib.jar; do mv "$file" "${file%-lib.jar}.jar"; done
+          ls -l build/libs
+          ls -lR ~/.m2/repository/com/github/aar0u/quick-hub
+
+      - name: Upload JAR as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: ~/.m2/repository/com/github/aar0u/quick-hub/**/*
+
+      - name: Github Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          artifacts: backend-kotlin/build/libs/*-fat.jar
+          allowUpdates: true
+
+  frontend:
+    runs-on: ubuntu-latest
+    needs: backend
+    defaults:
+      run:
+        working-directory: ./android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Download Backend JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: ~/.m2/repository/com/github/aar0u/quick-hub
+
+      - name: Build with Gradle
+        run: |
+          ls -lR ~/.m2/repository/com/github/aar0u/quick-hub
+          ./gradlew assembleDebug
+          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/quick-hub-${{ github.ref_name }}.apk
+
+      - name: Github Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          artifacts: android/app/build/outputs/apk/debug/*.apk
+          allowUpdates: true

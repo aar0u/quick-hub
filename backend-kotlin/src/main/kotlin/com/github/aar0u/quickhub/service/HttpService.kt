@@ -7,6 +7,9 @@ import com.github.aar0u.quickhub.util.NetworkUtils
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
 import java.lang.Thread.sleep
+import java.util.logging.ConsoleHandler
+import java.util.logging.Filter
+import java.util.logging.Logger
 
 class HttpService(private val config: Config, private val listener: OnFileReceivedListener? = null) :
     NanoHTTPD(config.host, config.port), Loggable {
@@ -28,6 +31,7 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
         )
 
     init {
+        configureNanoHTTPDLogger()
         File(config.workingDir).mkdirs()
     }
 
@@ -116,5 +120,20 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
             inputStream,
             inputStream.available().toLong(),
         )
+    }
+
+    private fun configureNanoHTTPDLogger() {
+        val logger = Logger.getLogger(NanoHTTPD::class.java.name)
+        // 禁用父级 Logger
+        logger.useParentHandlers = false
+        // 添加一个自定义的 Handler
+        logger.addHandler(object : ConsoleHandler() {
+            init {
+                filter = Filter { record ->
+                    log.warn("Ignored client interruption: ${record.thrown.message}")
+                    record.thrown.message?.contains("Broken pipe") != true
+                }
+            }
+        })
     }
 }

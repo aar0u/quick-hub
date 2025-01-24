@@ -13,6 +13,8 @@ import fi.iki.elonen.NanoHTTPD.getMimeTypeForFile
 import fi.iki.elonen.NanoHTTPD.newFixedLengthResponse
 import java.io.File
 import java.io.FileInputStream
+import java.io.RandomAccessFile
+import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDateTime
 
@@ -230,12 +232,54 @@ class FileController(private val config: Config) : Loggable {
             )
         }
 
-        log.info("Download started: ${file.absolutePath}")
-        return newFixedLengthResponse(
-            NanoHTTPD.Response.Status.OK,
-            getMimeTypeForFile(file.name),
-            FileInputStream(file),
-            file.length(),
-        )
+        val rangeHeader = session.headers["range"]
+        return if (rangeHeader != null) {
+            // 处理 Range 请求
+            log.info("Range started: ${file.absolutePath} $rangeHeader")
+            handleRangeRequest(file, rangeHeader)
+        } else {
+            // 普通请求，返回整个文件
+            log.info("Download started: ${file.absolutePath}")
+            newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK,
+                getMimeTypeForFile(file.name),
+                FileInputStream(file),
+                file.length(),
+            )
+        }
+    }
+
+    private fun handleRangeRequest(file: File, rangeHeader: String): NanoHTTPD.Response {
+        // 解析 Range 头部，提取开始和结束字节
+        val ranges = rangeHeader.substringAfter("bytes=").split("-")
+        val start = ranges[0].toLongOrNull() ?: 0
+        val end = ranges.getOrNull(1)?.toLongOrNull() ?: (file.length() - 1)
+
+        // 校验范围
+        if (start >= file.length() || end >= file.length() || start > end) {
+            return newFixedLengthResponse(
+                NanoHTTPD.Response.Status.RANGE_NOT_SATISFIABLE,
+                NanoHTTPD.MIME_PLAINTEXT,
+                "Invalid range",
+            )
+        }
+
+        // 读取指定范围的数据
+        val length = end - start + 1
+        val buffer = ByteArray(length.toInt())
+        RandomAccessFile(file, "r").use { raf ->
+            raf.seek(start)
+            raf.readFully(buffer)
+        }
+
+        val mimeType = Files.probeContentType(file.toPath()) ?: "application/octet-stream"
+
+        // 构建响应
+        val response =
+            newFixedLengthResponse(NanoHTTPD.Response.Status.PARTIAL_CONTENT, mimeType, buffer.inputStream(), length)
+        response.addHeader("Content-Range", "bytes $start-$end/${file.length()}")
+        response.addHeader("Content-Length", length.toString())
+        response.addHeader("Accept-Ranges", "bytes")
+        return response
     }
 }

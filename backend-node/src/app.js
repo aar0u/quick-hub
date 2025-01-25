@@ -21,7 +21,7 @@ app.use(express.static(path.join(__dirname, '../../static')));
 
 // Routes
 app.use('/text', textRoutes);
-app.use('/files', fileRoutes);
+app.use('/file', fileRoutes);
 
 // Default route
 app.get('/', (req, res) => {

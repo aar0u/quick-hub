@@ -13,6 +13,8 @@ import fi.iki.elonen.NanoHTTPD.newFixedLengthResponse
 import java.io.File
 import java.io.FileInputStream
 import java.io.RandomAccessFile
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDateTime
@@ -144,15 +146,15 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         session: NanoHTTPD.IHTTPSession,
         listener: HttpService.OnFileReceivedListener? = null,
     ): NanoHTTPD.Response {
-        val metadata =
-            session.headers["x-file-metadata"]?.let { metadataStr ->
-                try {
-                    gson.fromJson(metadataStr, object : TypeToken<Map<String, String>>() {})
-                } catch (e: Exception) {
-                    log.error("Failed to parse metadata", e)
-                    mutableMapOf()
-                }
-            } ?: mutableMapOf()
+        val metadata = session.headers["x-file-metadata"]?.let { metadataStr ->
+            runCatching {
+                val decode = URLDecoder.decode(metadataStr, StandardCharsets.UTF_8)
+                gson.fromJson<Map<String, String>>(decode, object : TypeToken<Map<String, String>>() {}.type)
+            }.getOrNull()
+        } ?: run {
+            log.warn("x-file-metadata is null or failed to decode")
+            mutableMapOf()
+        }
 
         val uploadDir = Paths.get(config.workingDir, metadata["dirname"] ?: "").toString()
         File(uploadDir).mkdirs() // Ensure upload directory exists
@@ -212,8 +214,8 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         )
     }
 
-    fun handleFileDownload(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
-        val filename = session.uri.removePrefix("/files/download/")
+    fun handleFileRequest(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
+        val filename = session.uri.removePrefix("/file/get/")
         val file = File(Paths.get(config.workingDir, filename).toString())
 
         if (!file.exists()) {
@@ -226,7 +228,6 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
 
         val rangeHeader = session.headers["range"]
         return if (rangeHeader != null) {
-            log.info("Range started: ${file.absolutePath} $rangeHeader")
             handleRangeRequest(file, rangeHeader)
         } else {
             log.info("Download started: ${file.absolutePath}")
@@ -247,7 +248,9 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         val maxChunkSize = 8 * 1024 * 1024L
         val chunkEnd = start + maxChunkSize - 1
         val end = ranges.getOrNull(1)?.toLongOrNull()?.coerceAtMost(chunkEnd) ?: minOf(file.length() - 1, chunkEnd)
+        val chunkSize = (end - start) + 1
 
+        log.info("Range request: ${file.absolutePath} ($start-$end/${file.length()})")
         if (start >= file.length() || end >= file.length() || start > end) {
             return newFixedLengthResponse(
                 NanoHTTPD.Response.Status.RANGE_NOT_SATISFIABLE,
@@ -256,19 +259,21 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
             )
         }
 
-        val length = end - start + 1
-        val buffer = ByteArray(length.toInt())
+        val buffer = ByteArray(chunkSize.toInt())
         RandomAccessFile(file, "r").use { raf ->
             raf.seek(start)
             raf.readFully(buffer)
         }
-
         val mimeType = Files.probeContentType(file.toPath()) ?: "application/octet-stream"
-        val response =
-            newFixedLengthResponse(NanoHTTPD.Response.Status.PARTIAL_CONTENT, mimeType, buffer.inputStream(), length)
+        val response = newFixedLengthResponse(
+            NanoHTTPD.Response.Status.PARTIAL_CONTENT,
+            mimeType,
+            buffer.inputStream(),
+            chunkSize,
+        )
         response.addHeader("Content-Range", "bytes $start-$end/${file.length()}")
-        response.addHeader("Content-Length", length.toString())
         response.addHeader("Accept-Ranges", "bytes")
+        response.addHeader("Content-Length", chunkSize.toString())
         return response
     }
 }

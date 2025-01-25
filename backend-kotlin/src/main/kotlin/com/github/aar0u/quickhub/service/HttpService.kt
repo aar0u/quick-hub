@@ -25,9 +25,9 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
             "/" to { _ -> serveRoot() },
             "/text/list" to { _ -> textController.handleTextList() },
             "/text/add" to textController::handleTextAdd,
-            "/files/list" to fileController::handleFileList,
-            "/files/check" to fileController::handleFileCheck,
-            "/files/add" to { session -> fileController.handleFileAdd(session, listener) },
+            "/file/list" to fileController::handleFileList,
+            "/file/check" to fileController::handleFileCheck,
+            "/file/add" to { session -> fileController.handleFileAdd(session, listener) },
         )
 
     init {
@@ -71,9 +71,9 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
 
             // First try exact matches
             routes[session.uri]?.invoke(session)
-                // Then try file download handler
-                ?: if (session.uri.startsWith("/files/download/")) {
-                    fileController.handleFileDownload(session)
+                // Then try file get handler
+                ?: if (session.uri.startsWith("/file/get/")) {
+                    fileController.handleFileRequest(session)
                 } else {
                     serveStaticFile(session.uri)
                 }

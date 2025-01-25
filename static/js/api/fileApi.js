@@ -1,5 +1,5 @@
 export async function fetchList(dirname) {
-  const response = await fetch('/files/list', {
+  const response = await fetch('/file/list', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -10,7 +10,7 @@ export async function fetchList(dirname) {
 }
 
 export async function checkFile(dirname, filename) {
-  const response = await fetch('/files/check', {
+  const response = await fetch('/file/check', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -33,10 +33,10 @@ export async function addFile(dirname, file, onProgress) {
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/files/add', true);
+    xhr.open('POST', '/file/add', true);
     
     // Add metadata to header
-    xhr.setRequestHeader('X-File-Metadata', metadata);
+    xhr.setRequestHeader('X-File-Metadata', encodeURIComponent(metadata));
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) {

@@ -132,7 +132,7 @@ const uploadHandler = (req, res) => {
   req.pipe(busboy);
 };
 
-const downloadHandler = (req, res) => {
+const getHandler = (req, res) => {
   const { filename } = req.params;
   const filePath = path.join(workingDir, filename);
 
@@ -141,7 +141,31 @@ const downloadHandler = (req, res) => {
       return utils.jsonResponse(res, 'failed', 'File not found');
     }
 
-    res.download(filePath, filename);
+    const stat = fs.statSync(filePath);
+    const rangeHeader = req.headers.range;
+
+    if (rangeHeader) {
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const maxChunkSize = 8 * 1024 * 1024; // 8MB chunks
+      const chunkEnd = start + maxChunkSize - 1;
+      const end = parts[1] ? Math.min(parseInt(parts[1], 10), chunkEnd) : Math.min(stat.size - 1, chunkEnd);
+      const chunkSize = (end - start) + 1;
+
+      console.log(`Range request: ${filePath} (${start}-${end}/${stat.size})`);
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': res.type(filename),
+      });
+
+      fs.createReadStream(filePath, { start, end }).pipe(res);
+    } else {
+      console.log(`Download started: ${filePath}`);
+      res.download(filePath, filename);
+    }
   });
 };
 
@@ -164,6 +188,6 @@ const checkHandler = (req, res) => {
 module.exports = {
   listHandler,
   uploadHandler,
-  downloadHandler,
+  getHandler,
   checkHandler,
 };

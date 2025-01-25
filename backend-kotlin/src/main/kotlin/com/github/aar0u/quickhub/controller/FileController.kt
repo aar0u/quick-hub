@@ -34,6 +34,7 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
                     name = "..",
                     path = FileUtils.trimFromBeginning(fullPath.parent ?: config.workingDir, config.workingDir),
                     type = "directory",
+                    uploadTime = "",
                 ),
             )
         }
@@ -244,8 +245,8 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         val ranges = rangeHeader.substringAfter("bytes=").split("-")
         val start = ranges[0].toLongOrNull() ?: 0
 
-        // Limit buffer to 8MB chunks
-        val maxChunkSize = 8 * 1024 * 1024L
+        // Limit buffer to 2MB chunks
+        val maxChunkSize = 2 * 1024 * 1024L
         val chunkEnd = start + maxChunkSize - 1
         val end = ranges.getOrNull(1)?.toLongOrNull()?.coerceAtMost(chunkEnd) ?: minOf(file.length() - 1, chunkEnd)
         val chunkSize = (end - start) + 1

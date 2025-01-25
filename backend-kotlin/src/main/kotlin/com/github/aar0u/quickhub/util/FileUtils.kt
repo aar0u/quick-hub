@@ -9,17 +9,11 @@ object FileUtils {
     }
 
     fun formatFileSize(size: Long): String {
-        val kilobyte = 1024L
-        val megabyte = kilobyte * 1024
-        val gigabyte = megabyte * 1024
-        val terabyte = gigabyte * 1024
+        if (size == 0L) return "0 B"
 
-        return when {
-            size < kilobyte -> "$size B"
-            size < megabyte -> "${size.div(kilobyte)} KB"
-            size < gigabyte -> "${size.div(megabyte)} MB"
-            size < terabyte -> "${size.div(gigabyte)} GB"
-            else -> "${size.div(terabyte)} TB"
-        }
+        val units = arrayOf("B", "KB", "MB", "GB", "TB")
+        val i = Math.floor(Math.log(size.toDouble()) / Math.log(1024.0)).toInt()
+
+        return String.format("%.2f %s", size / Math.pow(1024.0, i.toDouble()), units[i])
     }
 }

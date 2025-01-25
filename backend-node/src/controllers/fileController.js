@@ -56,7 +56,7 @@ const uploadHandler = (req, res) => {
   const busboy = Busboy({
     headers: req.headers,
     limits: {
-      fileSize: 8000 * 1024 * 1024, // 8GB limit
+      fileSize: 8 * 1024 * 1024 * 1024, // 8GB limit
     },
   });
 
@@ -147,7 +147,7 @@ const getHandler = (req, res) => {
     if (rangeHeader) {
       const parts = rangeHeader.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
-      const maxChunkSize = 8 * 1024 * 1024; // 8MB chunks
+      const maxChunkSize = 2 * 1024 * 1024; // 2MB chunks
       const chunkEnd = start + maxChunkSize - 1;
       const end = parts[1] ? Math.min(parseInt(parts[1], 10), chunkEnd) : Math.min(stat.size - 1, chunkEnd);
       const chunkSize = (end - start) + 1;

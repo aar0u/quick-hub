@@ -92,10 +92,10 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
     private fun serveStaticFile(path: String): Response {
         // First, try to load from classpath (inside JAR)
         val inputStream = javaClass.getResourceAsStream("${config.staticDir}$path")
+            ?: File("../static$path").takeIf { it.exists() }?.inputStream()
 
         if (inputStream == null) {
-            log.info("Not found: {} in {}", path, javaClass.getResource(config.staticDir))
-            // If not found in classpath, return 404
+            log.info("Not found: {}{} in {}", config.staticDir, path, javaClass.getResource("/"))
             return newFixedLengthResponse(
                 Response.Status.NOT_FOUND,
                 MIME_PLAINTEXT,

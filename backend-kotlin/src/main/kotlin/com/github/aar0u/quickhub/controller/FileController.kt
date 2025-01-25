@@ -234,11 +234,9 @@ class FileController(private val config: Config) : Loggable {
 
         val rangeHeader = session.headers["range"]
         return if (rangeHeader != null) {
-            // 处理 Range 请求
             log.info("Range started: ${file.absolutePath} $rangeHeader")
             handleRangeRequest(file, rangeHeader)
         } else {
-            // 普通请求，返回整个文件
             log.info("Download started: ${file.absolutePath}")
             newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK,
@@ -250,12 +248,14 @@ class FileController(private val config: Config) : Loggable {
     }
 
     private fun handleRangeRequest(file: File, rangeHeader: String): NanoHTTPD.Response {
-        // 解析 Range 头部，提取开始和结束字节
         val ranges = rangeHeader.substringAfter("bytes=").split("-")
         val start = ranges[0].toLongOrNull() ?: 0
-        val end = ranges.getOrNull(1)?.toLongOrNull() ?: (file.length() - 1)
 
-        // 校验范围
+        // Limit buffer to 8MB chunks
+        val maxChunkSize = 8 * 1024 * 1024L
+        val chunkEnd = start + maxChunkSize - 1
+        val end = ranges.getOrNull(1)?.toLongOrNull()?.coerceAtMost(chunkEnd) ?: minOf(file.length() - 1, chunkEnd)
+
         if (start >= file.length() || end >= file.length() || start > end) {
             return newFixedLengthResponse(
                 NanoHTTPD.Response.Status.RANGE_NOT_SATISFIABLE,
@@ -264,7 +264,6 @@ class FileController(private val config: Config) : Loggable {
             )
         }
 
-        // 读取指定范围的数据
         val length = end - start + 1
         val buffer = ByteArray(length.toInt())
         RandomAccessFile(file, "r").use { raf ->
@@ -273,8 +272,6 @@ class FileController(private val config: Config) : Loggable {
         }
 
         val mimeType = Files.probeContentType(file.toPath()) ?: "application/octet-stream"
-
-        // 构建响应
         val response =
             newFixedLengthResponse(NanoHTTPD.Response.Status.PARTIAL_CONTENT, mimeType, buffer.inputStream(), length)
         response.addHeader("Content-Range", "bytes $start-$end/${file.length()}")

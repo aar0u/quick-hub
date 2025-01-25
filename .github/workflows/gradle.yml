@@ -13,10 +13,13 @@ permissions:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: ./backend-kotlin
+    outputs:
+      short_sha: ${{ steps.set-vars.outputs.short_sha }}
+      short_timestamp: ${{ steps.set-vars.outputs.short_timestamp }}
     steps:
       - uses: actions/checkout@v4
 
@@ -40,16 +43,22 @@ jobs:
           name: backend-jar
           path: ~/.m2/repository/com/github/aar0u/quick-hub/**/*
 
+      - name: Set short SHA and timestamp
+        id: set-vars
+        run: |
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "short_timestamp=$(date -u +'%y%m%d')" >> $GITHUB_OUTPUT
+
       - name: Github Release
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ github.ref_name }}
-          name: "Release ${{ github.ref_name }}"
+          tag: r-${{ steps.set-vars.outputs.short_sha }}
+          name: "Release ${{ steps.set-vars.outputs.short_timestamp }}"
           artifacts: backend-kotlin/build/libs/*-fat.jar
           allowUpdates: true
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: backend
     defaults:
       run:
@@ -74,12 +83,12 @@ jobs:
         run: |
           ls -lR ~/.m2/repository/com/github/aar0u/quick-hub
           ./gradlew assembleDebug
-          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/quick-hub-${{ github.ref_name }}.apk
+          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/quick-hub-${{ needs.backend.outputs.short_sha }}.apk
 
       - name: Github Release
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ github.ref_name }}
-          name: "Release ${{ github.ref_name }}"
+          tag: r-${{ needs.backend.outputs.short_sha }}
+          name: "Release ${{ needs.backend.outputs.short_timestamp }}"
           artifacts: android/app/build/outputs/apk/debug/*.apk
           allowUpdates: true

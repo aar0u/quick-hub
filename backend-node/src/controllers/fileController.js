@@ -7,7 +7,7 @@ const { workingDir } = require('../config');
 const utils = require('../utils');
 
 const listHandler = (req, res) => {
-  const dirname = req.body.dirname || ''; // 如果没有提供dirname，默认为空字符串（当前目录）
+  const dirname = req.body.dirname || ''; // '' is current directory
   const fullPath = path.join(workingDir, dirname);
 
   const fileInfos = [];
@@ -16,6 +16,7 @@ const listHandler = (req, res) => {
       name: '..',
       path: `${utils.trimFromBeginning(fullPath, workingDir)}/..`,
       type: 'directory',
+      uploadTime: ''
     });
   }
 
@@ -27,15 +28,24 @@ const listHandler = (req, res) => {
       });
     }
 
-    // 过滤
-    const fileList = files.filter((file) => {
-      return !file.startsWith('.');
-    });
-    // 读取每个文件的统计信息
-    fileInfos.push(
+    const fileList = files
+      .filter((file) => !file.startsWith('.'))
+      .sort((a, b) => {
+        const isADirectory = fs.lstatSync(path.join(fullPath, a)).isDirectory();
+        const isBDirectory = fs.lstatSync(path.join(fullPath, b)).isDirectory();
+        
+        // if both are directories or files, sort by name
+        if (isADirectory === isBDirectory) {
+          return a.toLowerCase().localeCompare(b.toLowerCase());
+        }
+        // directory first
+        return isADirectory ? -1 : 1;
+      });
+
+      fileInfos.push(
       ...fileList.map((file) => {
         const filePath = path.join(fullPath, file);
-        const stats = fs.statSync(filePath);
+        const stats = fs.lstatSync(filePath);
         return {
           name: file,
           path: utils.trimFromBeginning(filePath, workingDir),

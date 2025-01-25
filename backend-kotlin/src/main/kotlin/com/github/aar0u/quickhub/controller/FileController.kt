@@ -24,7 +24,7 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
     fun handleFileList(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
         val jsonObject = parseJsonBody(session)
         val dirname = jsonObject["dirname"] ?: ""
-        val fullPath = File(Paths.get(config.workingDir, dirname).toString())
+        val fullPath = File(Paths.get(config.workingDir, dirname).normalize().toString())
         log.info("Listing {}", fullPath)
 
         val fileInfos = mutableListOf<FileInfo>()
@@ -33,8 +33,7 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
                 FileInfo(
                     name = "..",
                     path = FileUtils.trimFromBeginning(fullPath.parent ?: config.workingDir, config.workingDir),
-                    type = "directory",
-                    uploadTime = "",
+                    type = "directory"
                 ),
             )
         }
@@ -57,7 +56,10 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
             )
         }
 
-        fullPath.listFiles()?.filter { !it.name.startsWith(".") }?.forEach { file ->
+        fullPath.listFiles()
+            ?.filter { !it.name.startsWith(".") }
+            ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() })
+            ?.forEach { file ->
             fileInfos.add(
                 FileInfo(
                     name = file.name,

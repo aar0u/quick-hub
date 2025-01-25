@@ -5,5 +5,5 @@ data class FileInfo(
     val path: String,
     val type: String,
     val size: Long? = null,
-    val uploadTime: String? = null,
+    val uploadTime: String? = "",
 )

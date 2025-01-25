@@ -65,10 +65,11 @@ async function handleUpload() {
 
 function createFileRow(file) {
   const tr = document.createElement('tr');
+  const fileName = file.path.replace(/#/g, '%23');
   const href =
     file.type === 'directory'
-      ? `/file/${file.path}`
-      : `/file/get/${file.path}`;
+      ? `/file/${fileName}`
+      : `/file/get/${fileName}`;
 
   tr.innerHTML = `
     <td><a href="${href}" class="${file.type === 'directory' ? 'directory' : ''}">${file.name}</a></td>

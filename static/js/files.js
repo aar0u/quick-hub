@@ -72,16 +72,20 @@ function createFileRow(file) {
       : `/file/get/${fileName}`;
 
   tr.innerHTML = `
-    <td><a href="${href}" class="${file.type === 'directory' ? 'directory' : ''}">${file.name}</a></td>
-    <td>${formatFileSize(file.size)}</td>
-    <td>${file.uploadTime}</td>
+    <td><a href="${href}" class="${file.name === '..' ? 'parent-dir' : ''}">${file.name}</a></td>
+    <td>${formatFileSize(file.size) || '-'}</td>
+    <td>${file.uploadTime || '-'}</td>
   `;
 
   if (file.type === 'directory') {
-    tr.querySelector('a').addEventListener('click', (e) => {
+    tr.addEventListener('click', (e) => {
       e.preventDefault();
       dirname = file.path;
       updateList();
+    });
+  } else {
+    tr.addEventListener('click', () => {
+      window.location.href = href;
     });
   }
 

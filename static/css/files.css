@@ -3,27 +3,54 @@
   width: 100%;
   border-collapse: collapse;
 }
+
+#fileList tr {
+  cursor: pointer;
+}
+
 #fileList th,
 #fileList td {
   padding: 8px;
   text-align: left;
   border-bottom: 1px solid #ddd;
 }
-#fileList tr:hover {
-  background-color: #f5f5f5;
-}
+
 #fileList th {
   background-color: #f2f2f2;
 }
+
+#fileList td {
+  background-color: transparent;
+  /* Reset background color */
+}
+
+#fileList tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+#fileList tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+#fileList tr:hover {
+  background-color: #e6e6e6;
+}
+
+#fileList .parent-dir {
+  font-weight: bold;
+}
+
 span[role='button'] {
   margin-bottom: 1rem;
   padding: 0.5rem 1rem;
   cursor: pointer;
   display: inline-block;
 }
+
 #folder {
   font-size: medium;
 }
+
 #fetchStatus {
   font-size: medium;
   font-weight: normal;

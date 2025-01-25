@@ -6,7 +6,6 @@ import com.github.aar0u.quickhub.model.FileInfo
 import com.github.aar0u.quickhub.service.HttpService
 import com.github.aar0u.quickhub.service.Loggable
 import com.github.aar0u.quickhub.util.FileUtils
-import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoHTTPD.getMimeTypeForFile
@@ -18,14 +17,10 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDateTime
 
-class FileController(private val config: Config) : Loggable {
-    private val gson = GsonBuilder().create()
+class FileController(private val config: Config) : Loggable, ControllerBase() {
 
     fun handleFileList(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
-        val map = mutableMapOf<String, String>()
-        session.parseBody(map)
-        val jsonData = map["postData"] ?: "{}"
-        val jsonObject = gson.fromJson(jsonData, object : TypeToken<Map<String, String>>() {})
+        val jsonObject = parseJsonBody(session)
         val dirname = jsonObject["dirname"] ?: ""
         val fullPath = File(Paths.get(config.workingDir, dirname).toString())
         log.info("Listing {}", fullPath)
@@ -44,7 +39,7 @@ class FileController(private val config: Config) : Loggable {
         if (!fullPath.exists()) {
             return newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK,
-                "application/json",
+                MIME_JSON,
                 gson.toJson(
                     ApiResponse(
                         status = "failed",
@@ -90,23 +85,20 @@ class FileController(private val config: Config) : Loggable {
 
         return newFixedLengthResponse(
             NanoHTTPD.Response.Status.OK,
-            "application/json",
+            MIME_JSON,
             gson.toJson(response),
         )
     }
 
     fun handleFileCheck(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
-        val map = mutableMapOf<String, String>()
-        session.parseBody(map)
-        val jsonData = map["postData"] ?: "{}"
-        val jsonObject = gson.fromJson(jsonData, object : TypeToken<Map<String, String>>() {})
+        val jsonObject = parseJsonBody(session)
         val filename = jsonObject["filename"] ?: ""
         val dirname = jsonObject["dirname"] ?: ""
 
         if (filename.isBlank()) {
             return newFixedLengthResponse(
                 NanoHTTPD.Response.Status.BAD_REQUEST,
-                "application/json",
+                MIME_JSON,
                 gson.toJson(
                     ApiResponse(
                         status = "failed",
@@ -126,7 +118,7 @@ class FileController(private val config: Config) : Loggable {
             )
             return newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK,
-                "application/json",
+                MIME_JSON,
                 gson.toJson(
                     ApiResponse(
                         status = "failed",
@@ -138,7 +130,7 @@ class FileController(private val config: Config) : Loggable {
 
         return newFixedLengthResponse(
             NanoHTTPD.Response.Status.OK,
-            "application/json",
+            MIME_JSON,
             gson.toJson(
                 ApiResponse(
                     status = "success",
@@ -198,7 +190,7 @@ class FileController(private val config: Config) : Loggable {
             log.error("Failed to handle file", e)
             return newFixedLengthResponse(
                 NanoHTTPD.Response.Status.INTERNAL_ERROR,
-                "application/json",
+                MIME_JSON,
                 gson.toJson(
                     ApiResponse(
                         status = "failed",
@@ -210,7 +202,7 @@ class FileController(private val config: Config) : Loggable {
 
         return newFixedLengthResponse(
             NanoHTTPD.Response.Status.OK,
-            "application/json",
+            MIME_JSON,
             gson.toJson(
                 ApiResponse(
                     status = "success",

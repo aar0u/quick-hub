@@ -33,7 +33,7 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
                 FileInfo(
                     name = "..",
                     path = FileUtils.trimFromBeginning(fullPath.parent ?: config.workingDir, config.workingDir),
-                    type = "directory"
+                    type = "directory",
                 ),
             )
         }
@@ -60,22 +60,22 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
             ?.filter { !it.name.startsWith(".") }
             ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() })
             ?.forEach { file ->
-            fileInfos.add(
-                FileInfo(
-                    name = file.name,
-                    path = FileUtils.trimFromBeginning(file.absolutePath, config.workingDir),
-                    type = if (file.isDirectory) "directory" else "file",
-                    size = if (file.isDirectory) null else file.length(),
-                    uploadTime =
-                    config.dateTimeFormatter?.format(
-                        LocalDateTime.ofInstant(
-                            java.time.Instant.ofEpochMilli(file.lastModified()),
-                            java.time.ZoneId.systemDefault(),
+                fileInfos.add(
+                    FileInfo(
+                        name = file.name,
+                        path = FileUtils.trimFromBeginning(file.absolutePath, config.workingDir),
+                        type = if (file.isDirectory) "directory" else "file",
+                        size = if (file.isDirectory) null else file.length(),
+                        uploadTime =
+                        config.dateTimeFormatter?.format(
+                            LocalDateTime.ofInstant(
+                                java.time.Instant.ofEpochMilli(file.lastModified()),
+                                java.time.ZoneId.systemDefault(),
+                            ),
                         ),
                     ),
-                ),
-            )
-        }
+                )
+            }
 
         val response =
             ApiResponse(

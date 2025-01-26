@@ -7,6 +7,8 @@ import com.github.aar0u.quickhub.util.NetworkUtils
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
 import java.lang.Thread.sleep
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.logging.ConsoleHandler
 import java.util.logging.Filter
 import java.util.logging.Logger
@@ -37,7 +39,6 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
 
     override fun start() {
         try {
-            // Print all available interfaces
             NetworkUtils.getIpAddresses().forEach { (name, addresses) ->
                 addresses.forEach { address ->
                     log.info("$name: http://$address:${config.port}")
@@ -102,17 +103,7 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
                 "404 Not Found",
             )
         }
-        val contentType =
-            when {
-                path.endsWith(".html") -> "text/html"
-                path.endsWith(".css") -> "text/css"
-                path.endsWith(".js") -> "application/javascript"
-                path.endsWith(".json") -> "application/json"
-                path.endsWith(".png") -> "image/png"
-                path.endsWith(".jpg") || path.endsWith(".jpeg") -> "image/jpeg"
-                path.endsWith(".gif") -> "image/gif"
-                else -> "application/octet-stream"
-            }
+        val contentType = Files.probeContentType(Paths.get(path)) ?: "application/octet-stream"
 
         return newFixedLengthResponse(
             Response.Status.OK,
@@ -124,9 +115,9 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
 
     private fun configureNanoHTTPDLogger() {
         val logger = Logger.getLogger(NanoHTTPD::class.java.name)
-        // 禁用父级 Logger
+        // disable parent handlers
         logger.useParentHandlers = false
-        // 添加一个自定义的 Handler
+        // add a custom handler
         logger.addHandler(object : ConsoleHandler() {
             init {
                 filter = Filter { record ->

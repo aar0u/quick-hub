@@ -13,8 +13,8 @@ android {
         minSdk = 21
         //noinspection OldTargetApi
         targetSdk = 33
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = project.hasProperty('versionCode') ? project.versionCode.toInteger() : 1
+        versionName = project.hasProperty('commitSha') ? "1.0.$project.commitSha" : "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

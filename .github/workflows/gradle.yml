@@ -52,7 +52,7 @@ jobs:
       - name: Github Release
         uses: ncipollo/release-action@v1
         with:
-          tag: r-${{ steps.set-vars.outputs.short_sha }}
+          tag: r-${{ steps.set-vars.outputs.short_timestamp }}
           name: "Release ${{ steps.set-vars.outputs.short_timestamp }}"
           artifacts: backend-kotlin/build/libs/*-fat.jar
           allowUpdates: true
@@ -82,13 +82,13 @@ jobs:
       - name: Build with Gradle
         run: |
           ls -lR ~/.m2/repository/com/github/aar0u/quick-hub
-          ./gradlew assembleDebug
-          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/quick-hub-${{ needs.backend.outputs.short_sha }}.apk
+          ./gradlew assembleDebug -PcommitSha=${{ needs.backend.outputs.short_sha }} -PversionCode=${{ github.run_number }}
+          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/quick-hub-1.0.apk
 
       - name: Github Release
         uses: ncipollo/release-action@v1
         with:
-          tag: r-${{ needs.backend.outputs.short_sha }}
+          tag: r-${{ needs.backend.outputs.short_timestamp }}
           name: "Release ${{ needs.backend.outputs.short_timestamp }}"
           artifacts: android/app/build/outputs/apk/debug/*.apk
           allowUpdates: true

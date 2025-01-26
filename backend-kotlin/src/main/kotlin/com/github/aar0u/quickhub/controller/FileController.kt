@@ -253,7 +253,7 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         val end = ranges.getOrNull(1)?.toLongOrNull()?.coerceAtMost(chunkEnd) ?: minOf(file.length() - 1, chunkEnd)
         val chunkSize = (end - start) + 1
 
-        log.info("Range request: ${file.absolutePath} ($start-$end/${file.length()})")
+        log.info("Range request $rangeHeader ($chunkSize): ${file.name} ($start-$end/${file.length()})")
         if (start >= file.length() || end >= file.length() || start > end) {
             return newFixedLengthResponse(
                 NanoHTTPD.Response.Status.RANGE_NOT_SATISFIABLE,

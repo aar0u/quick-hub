@@ -162,13 +162,13 @@ const getHandler = (req, res) => {
       const end = parts[1] ? Math.min(parseInt(parts[1], 10), chunkEnd) : Math.min(stat.size - 1, chunkEnd);
       const chunkSize = (end - start) + 1;
 
-      console.log(`Range request: ${filePath} (${start}-${end}/${stat.size})`);
+      console.log(`Range request ${rangeHeader} (${chunkSize}): ${filename} (${start}-${end}/${stat.size})`);
 
       res.writeHead(206, {
         'Content-Range': `bytes ${start}-${end}/${stat.size}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunkSize,
-        'Content-Type': res.type(filename),
+        'Content-Type': res.type(encodeURIComponent(filename)),
       });
 
       fs.createReadStream(filePath, { start, end }).pipe(res);

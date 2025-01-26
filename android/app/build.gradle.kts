@@ -13,13 +13,22 @@ android {
         minSdk = 21
         //noinspection OldTargetApi
         targetSdk = 33
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = (project.findProperty("commitSha") as String?)?.let { "1.0.$it" } ?: "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
+        }
+    }
+
+    signingConfigs {
+        create("customDebug") {
+            storeFile = file("temp_keystore.jks")
+            storePassword = "android"
+            keyAlias = "debug_alias"
+            keyPassword = "android"
         }
     }
 
@@ -30,6 +39,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("customDebug")
         }
     }
     compileOptions {

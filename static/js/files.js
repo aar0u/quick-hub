@@ -85,6 +85,11 @@ function createFileRow(file) {
   tr.appendChild(document.createElement('td')).textContent = formatFileSize(file.size) || '-';
   tr.appendChild(document.createElement('td')).textContent = file.uploadTime || '-';
 
+  (async () => {
+    try { const module = await import('./fileActions.js'); module.pushButton(td, file); }
+    catch (e) { /* Ignore error */ }
+  })();
+
   if (file.type === 'directory') {
     tr.addEventListener('click', (e) => {
       e.preventDefault();

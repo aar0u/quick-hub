@@ -2,6 +2,7 @@
 name: Main CI Pipeline
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'backend-kotlin/**'
@@ -52,7 +53,7 @@ jobs:
       - name: Github Release
         uses: ncipollo/release-action@v1
         with:
-          tag: r-${{ steps.set-vars.outputs.short_sha }}
+          tag: r-${{ steps.set-vars.outputs.short_timestamp }}
           name: "Release ${{ steps.set-vars.outputs.short_timestamp }}"
           artifacts: backend-kotlin/build/libs/*-fat.jar
           allowUpdates: true
@@ -66,7 +67,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: set up JDK
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -79,16 +80,22 @@ jobs:
           name: backend-jar
           path: ~/.m2/repository/com/github/aar0u/quick-hub
 
+      - name: Decode Keystore
+        run: |
+          echo "${{ vars.BASE64_DEBUG }}" | base64 --decode > app/temp_keystore.jks
+          pwd
+          ls -l app
+
       - name: Build with Gradle
         run: |
           ls -lR ~/.m2/repository/com/github/aar0u/quick-hub
-          ./gradlew assembleDebug
-          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/quick-hub-${{ needs.backend.outputs.short_sha }}.apk
+          ./gradlew assembleDebug -PcommitSha=${{ needs.backend.outputs.short_sha }} -PversionCode=1
+          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/quick-hub-1.0.apk
 
       - name: Github Release
         uses: ncipollo/release-action@v1
         with:
-          tag: r-${{ needs.backend.outputs.short_sha }}
+          tag: r-${{ needs.backend.outputs.short_timestamp }}
           name: "Release ${{ needs.backend.outputs.short_timestamp }}"
           artifacts: android/app/build/outputs/apk/debug/*.apk
           allowUpdates: true

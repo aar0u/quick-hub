@@ -71,11 +71,19 @@ function createFileRow(file) {
       ? `/file/${fileName}`
       : `/file/get/${fileName}`;
 
-  tr.innerHTML = `
-    <td><a href="${href}" class="${file.name === '..' ? 'parent-dir' : ''}">${file.name}</a></td>
-    <td>${formatFileSize(file.size) || '-'}</td>
-    <td>${file.uploadTime || '-'}</td>
-  `;
+  const td = document.createElement('td');
+  const a = document.createElement('a');
+  a.href = href;
+  a.className = file.name === '..' ? 'parent-dir' : '';
+  a.textContent = file.name;
+  a.addEventListener('click', (event) => {
+    event.preventDefault();
+  });
+
+  td.appendChild(a);
+  tr.appendChild(td);
+  tr.appendChild(document.createElement('td')).textContent = formatFileSize(file.size) || '-';
+  tr.appendChild(document.createElement('td')).textContent = file.uploadTime || '-';
 
   if (file.type === 'directory') {
     tr.addEventListener('click', (e) => {

@@ -220,6 +220,8 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
     fun handleFileRequest(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
         val filename = session.uri.removePrefix("/file/get/")
         val file = File(Paths.get(config.workingDir, filename).toString())
+        val rangeHeader = session.headers["range"]
+        log.info("Get file: ${file.absolutePath} (${rangeHeader})")
 
         if (!file.exists()) {
             return newFixedLengthResponse(
@@ -229,11 +231,9 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
             )
         }
 
-        val rangeHeader = session.headers["range"]
         return if (rangeHeader != null) {
             handleRangeRequest(file, rangeHeader)
         } else {
-            log.info("Download started: ${file.absolutePath}")
             newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK,
                 getMimeTypeForFile(file.name),

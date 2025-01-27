@@ -1,4 +1,4 @@
-import { formatFileSize } from './utils/formatters.js';
+import { formatFileSize, escapeFilename } from './utils/formatters.js';
 import { checkFile, addFile, fetchList } from './api/fileApi.js';
 
 const elements = {
@@ -65,7 +65,7 @@ async function handleUpload() {
 
 function createFileRow(file) {
   const tr = document.createElement('tr');
-  const fileName = file.path.replace(/#/g, '%23');
+  const fileName = escapeFilename(file.path);
   const href =
     file.type === 'directory'
       ? `/file/${fileName}`

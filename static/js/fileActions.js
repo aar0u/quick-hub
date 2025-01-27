@@ -1,6 +1,8 @@
+import { escapeFilename } from './utils/formatters.js';
+
 function pushButton(td, file) {
   const url = `${window.location.protocol}//${window.location.hostname}${window.location.port
-    ? ':' + window.location.port : ''}/file/get/${file.path.replace(/#/g, '%23').replace(/ /g, '%20')}`;
+    ? ':' + window.location.port : ''}/file/get/${escapeFilename(file.path)}`;
 
   const button = document.createElement('span');
   button.innerHTML = `

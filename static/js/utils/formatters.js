@@ -19,3 +19,8 @@ export function formatFileSize(bytes) {
 
   return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+export function escapeFilename(filename) {
+  return filename.replace(/%/g, '%25').replace(/\+/g, '%2B').replace(/\?/g, '%3F').replace(/\^/g, '%5E')
+    .replace(/ /g, '%20').replace(/#/g, '%23').replace(/\$/, '%24').replace(/&/g, '%26');
+}

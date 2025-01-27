@@ -143,16 +143,18 @@ const uploadHandler = (req, res) => {
 };
 
 const getHandler = (req, res) => {
-  const { filename } = req.params;
+  const filename = req.params.filename;
   const filePath = path.join(workingDir, filename);
+  const rangeHeader = req.headers.range;
+  console.log(`Get file: ${filePath} (${rangeHeader})`);
 
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
+      console.log(err);
       return utils.jsonResponse(res, 'failed', 'File not found');
     }
 
     const stat = fs.statSync(filePath);
-    const rangeHeader = req.headers.range;
 
     if (rangeHeader) {
       const parts = rangeHeader.replace(/bytes=/, '').split('-');
@@ -173,7 +175,6 @@ const getHandler = (req, res) => {
 
       fs.createReadStream(filePath, { start, end }).pipe(res);
     } else {
-      console.log(`Download started: ${filePath}`);
       res.download(filePath, filename);
     }
   });

@@ -9,7 +9,10 @@ abstract class ControllerBase {
     protected val gson: Gson = GsonBuilder().create()
 
     companion object {
-        internal const val MIME_JSON = "application/json"
+        const val HEADER_CONTENT_RANGE = "Content-Range"
+        const val HEADER_CONTENT_LENGTH = "Content-Length"
+        const val MIME_JSON = "application/json"
+        const val MIME_STREAM = "application/octet-stream"
     }
 
     protected fun parseJsonBody(session: NanoHTTPD.IHTTPSession): Map<String, String> {

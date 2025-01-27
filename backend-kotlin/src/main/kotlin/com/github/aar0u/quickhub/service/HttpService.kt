@@ -121,8 +121,7 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
         logger.addHandler(object : ConsoleHandler() {
             init {
                 filter = Filter { record ->
-                    log.warn("Ignored client interruption: ${record.thrown.message}")
-                    record.thrown.message?.contains("Broken pipe") != true
+                    record.thrown.message?.contains("Broken pipe") != true // Ignored client interruption
                 }
             }
         })

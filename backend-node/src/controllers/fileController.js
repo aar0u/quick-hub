@@ -146,7 +146,7 @@ const getHandler = (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(workingDir, filename);
   const rangeHeader = req.headers.range;
-  console.log(`Get file: ${filePath} (${rangeHeader})`);
+  console.log(`Get file: ${filename} (${rangeHeader})`);
 
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
@@ -159,18 +159,14 @@ const getHandler = (req, res) => {
     if (rangeHeader) {
       const parts = rangeHeader.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
-      const maxChunkSize = 2 * 1024 * 1024; // 2MB chunks
-      const chunkEnd = start + maxChunkSize - 1;
-      const end = parts[1] ? Math.min(parseInt(parts[1], 10), chunkEnd) : Math.min(stat.size - 1, chunkEnd);
+      const end = parts[1] ? Math.min(parseInt(parts[1], 10), stat.size - 1) : (stat.size - 1);
       const chunkSize = (end - start) + 1;
 
-      console.log(`Range request ${rangeHeader} (${chunkSize}): ${filename} (${start}-${end}/${stat.size})`);
-
       res.writeHead(206, {
-        'Content-Range': `bytes ${start}-${end}/${stat.size}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunkSize,
         'Content-Type': res.type(encodeURIComponent(filename)),
+        'Content-Length': chunkSize,
+        'Accept-Ranges': 'bytes',
+        'Content-Range': `bytes ${start}-${end}/${stat.size}`,
       });
 
       fs.createReadStream(filePath, { start, end }).pipe(res);

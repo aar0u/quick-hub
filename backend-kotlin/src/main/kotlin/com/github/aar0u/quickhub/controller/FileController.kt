@@ -9,9 +9,9 @@ import com.github.aar0u.quickhub.util.FileUtils
 import com.google.gson.reflect.TypeToken
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoHTTPD.getMimeTypeForFile
+import fi.iki.elonen.NanoHTTPD.newChunkedResponse
 import fi.iki.elonen.NanoHTTPD.newFixedLengthResponse
 import java.io.File
-import java.io.FileInputStream
 import java.io.RandomAccessFile
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -20,7 +20,6 @@ import java.nio.file.Paths
 import java.time.LocalDateTime
 
 class FileController(private val config: Config) : Loggable, ControllerBase() {
-
     fun handleFileList(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
         val jsonObject = parseJsonBody(session)
         val dirname = jsonObject["dirname"] ?: ""
@@ -221,7 +220,7 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         val filename = session.uri.removePrefix("/file/get/")
         val file = File(Paths.get(config.workingDir, filename).toString())
         val rangeHeader = session.headers["range"]
-        log.info("Get file: ${file.absolutePath} (${rangeHeader})")
+        log.info("Get file: ${file.name} ($rangeHeader)")
 
         if (!file.exists()) {
             return newFixedLengthResponse(
@@ -231,52 +230,40 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
             )
         }
 
-        return if (rangeHeader != null) {
-            handleRangeRequest(file, rangeHeader)
+        val mimeType = Files.probeContentType(file.toPath()) ?: MIME_STREAM
+        val response = newChunkedResponse(NanoHTTPD.Response.Status.OK, mimeType, null)
+
+        if (rangeHeader == null) {
+            response.data = file.inputStream()
+            response.addHeader(HEADER_CONTENT_LENGTH, file.length().toString())
         } else {
-            newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK,
-                getMimeTypeForFile(file.name),
-                FileInputStream(file),
-                file.length(),
-            )
+            val ranges = rangeHeader.substringAfter("bytes=").split("-")
+            val start = ranges[0].toLongOrNull() ?: 0
+            val end = ranges.getOrNull(1)?.toLongOrNull()?.coerceAtMost(file.length() - 1) ?: (file.length() - 1)
+
+            response.status = NanoHTTPD.Response.Status.PARTIAL_CONTENT
+            response.addHeader("Accept-Ranges", "bytes")
+            val chunkSize = (end - start) + 1
+            if (end == file.length() - 1) {
+                val fis = file.inputStream()
+                fis.channel.position(start)
+                response.data = fis
+                response.addHeader(HEADER_CONTENT_LENGTH, chunkSize.toString())
+                response.addHeader(HEADER_CONTENT_RANGE, "bytes $start-$end/${file.length()}")
+            } else if (end > start) {
+                val maxChunkSize = 2 * 1024 * 1024L // Limit buffer to 2MB chunks
+                val actualChunk = chunkSize.coerceAtMost(maxChunkSize)
+                val buffer = ByteArray(actualChunk.toInt())
+                RandomAccessFile(file, "r").use { raf ->
+                    raf.seek(start)
+                    raf.readFully(buffer)
+                }
+                response.data = buffer.inputStream()
+                response.addHeader(HEADER_CONTENT_LENGTH, actualChunk.toString())
+                response.addHeader(HEADER_CONTENT_RANGE, "bytes $start-${start + actualChunk - 1}/${file.length()}")
+            }
         }
-    }
 
-    private fun handleRangeRequest(file: File, rangeHeader: String): NanoHTTPD.Response {
-        val ranges = rangeHeader.substringAfter("bytes=").split("-")
-        val start = ranges[0].toLongOrNull() ?: 0
-
-        // Limit buffer to 2MB chunks
-        val maxChunkSize = 2 * 1024 * 1024L
-        val chunkEnd = start + maxChunkSize - 1
-        val end = ranges.getOrNull(1)?.toLongOrNull()?.coerceAtMost(chunkEnd) ?: minOf(file.length() - 1, chunkEnd)
-        val chunkSize = (end - start) + 1
-
-        log.info("Range request $rangeHeader ($chunkSize): ${file.name} ($start-$end/${file.length()})")
-        if (start >= file.length() || end >= file.length() || start > end) {
-            return newFixedLengthResponse(
-                NanoHTTPD.Response.Status.RANGE_NOT_SATISFIABLE,
-                NanoHTTPD.MIME_PLAINTEXT,
-                "Invalid range",
-            )
-        }
-
-        val buffer = ByteArray(chunkSize.toInt())
-        RandomAccessFile(file, "r").use { raf ->
-            raf.seek(start)
-            raf.readFully(buffer)
-        }
-        val mimeType = Files.probeContentType(file.toPath()) ?: "application/octet-stream"
-        val response = newFixedLengthResponse(
-            NanoHTTPD.Response.Status.PARTIAL_CONTENT,
-            mimeType,
-            buffer.inputStream(),
-            chunkSize,
-        )
-        response.addHeader("Content-Range", "bytes $start-$end/${file.length()}")
-        response.addHeader("Accept-Ranges", "bytes")
-        response.addHeader("Content-Length", chunkSize.toString())
         return response
     }
 }

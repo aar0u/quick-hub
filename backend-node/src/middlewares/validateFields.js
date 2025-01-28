@@ -1,7 +1,7 @@
 'use strict';
-const utils = require('../utils');
+import utils from '../utils.js';
 
-module.exports = (req, res, next) => {
+export const validateFields = (req, res, next) => {
   const fieldsToValidate = ['text']; // Add or remove fields as needed
 
   for (const field of fieldsToValidate) {

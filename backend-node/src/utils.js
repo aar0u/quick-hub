@@ -1,7 +1,6 @@
 'use strict';
 
 function formatFileSize(bytes) {
-  // Check if input is a valid number and greater than or equal to 0
   if (typeof bytes !== 'number' || isNaN(bytes) || bytes < 0) {
     return '';
   }
@@ -33,7 +32,7 @@ function jsonResponse(res, status, message, data = null) {
   return res;
 }
 
-module.exports = {
+export default {
   formatFileSize,
   trimFromBeginning,
   jsonResponse,

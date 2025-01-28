@@ -1,7 +1,8 @@
 'use strict';
 
-const app = require('./app');
-const { port, host } = require('./config');
+import { networkInterfaces } from 'os';
+import { app } from './app.js';
+import { port, host } from './config.js';
 
 const server = app.listen(port, host, () => {
   console.log(`running on http://${host}:${port}`);
@@ -16,7 +17,6 @@ const server = app.listen(port, host, () => {
 server.timeout = 1000 * 60 * 30; // 30 minutes
 
 function getIP() {
-  const { networkInterfaces } = require('os');
   const nets = networkInterfaces();
   const ip = {};
 

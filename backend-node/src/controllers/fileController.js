@@ -1,10 +1,10 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const Busboy = require('busboy');
-const { workingDir } = require('../config');
-const utils = require('../utils');
+import fs from 'fs';
+import path from 'path';
+import Busboy from 'busboy';
+import utils from '../utils.js';
+import { workingDir } from '../config.js';
 
 const listHandler = (req, res) => {
   const dirname = req.body.dirname || ''; // '' is current directory
@@ -192,7 +192,7 @@ const checkHandler = (req, res) => {
   return utils.jsonResponse(res, 'success', 'File can be uploaded');
 };
 
-module.exports = {
+export default {
   listHandler,
   uploadHandler,
   getHandler,

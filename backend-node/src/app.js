@@ -1,13 +1,16 @@
 'use strict';
 
-const express = require('express');
-const path = require('path');
-const textRoutes = require('./routes/textRoutes');
-const fileRoutes = require('./routes/fileRoutes');
-const { workingDir } = require('./config');
-const fs = require('fs');
+import express from 'express';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { workingDir } from './config.js';
+import { router as textRoutes } from './routes/textRoutes.js';
+import { router as fileRoutes } from './routes/fileRoutes.js';
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Ensure the upload directory exists
 if (!fs.existsSync(workingDir)) {
@@ -28,4 +31,4 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../../static', 'pad.html'));
 });
 
-module.exports = app;
+export { app };

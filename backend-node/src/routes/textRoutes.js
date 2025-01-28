@@ -1,12 +1,12 @@
 'use strict';
 
-const express = require('express');
-const textController = require('../controllers/textController');
-const validateFields = require('../middlewares/validateFields');
+import express from 'express';
+import textController from '../controllers/textController.js';
+import { validateFields } from '../middlewares/validateFields.js';
 
 const router = express.Router();
 
 router.get('/list', textController.getHistoryHandler);
 router.post('/add', validateFields, textController.saveTextHandler);
 
-module.exports = router;
+export { router };

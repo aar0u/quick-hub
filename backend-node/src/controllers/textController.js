@@ -1,5 +1,5 @@
 'use strict';
-const utils = require('../utils');
+import utils from '../utils.js';
 
 let history = [];
 
@@ -30,7 +30,7 @@ const getHistoryHandler = (req, res) => {
   return utils.jsonResponse(res, 'success', 'Load successfully', history);
 };
 
-module.exports = {
+export default {
   saveTextHandler,
   getHistoryHandler,
 };

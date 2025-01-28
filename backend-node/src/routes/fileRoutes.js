@@ -1,7 +1,7 @@
 'use strict';
 
-const express = require('express');
-const fileController = require('../controllers/fileController');
+import express from 'express';
+import fileController from '../controllers/fileController.js';
 
 const router = express.Router();
 
@@ -10,4 +10,4 @@ router.post('/check', fileController.checkHandler);
 router.post('/add', fileController.uploadHandler);
 router.get('/get/:filename(*)', fileController.getHandler);
 
-module.exports = router;
+export { router };

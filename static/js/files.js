@@ -1,4 +1,4 @@
-import { formatFileSize, escapeFilename } from './utils/formatters.js';
+import { formatFileSize, escapeFilename } from './utils.js';
 import { checkFile, addFile, fetchList } from './api/fileApi.js';
 
 const elements = {

@@ -1,4 +1,4 @@
-import { formatDate } from './utils/formatters.js';
+import { formatDate } from './utils.js';
 import { fetchList, addText } from './api/textApi.js';
 
 const messageDiv = document.getElementById('message');

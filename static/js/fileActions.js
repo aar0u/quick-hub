@@ -1,4 +1,4 @@
-import { escapeFilename } from './utils/formatters.js';
+import { escapeFilename, showToast } from './utils.js';
 
 function pushButton(td, file) {
   const url = `${window.location.protocol}//${window.location.hostname}${window.location.port
@@ -16,9 +16,13 @@ function pushButton(td, file) {
   button.onclick = (event) => {
     event.stopPropagation(); // Prevent the row click event
 
-    const params = new URLSearchParams();
-    params.append('do', 'push');
-    params.append('url', url);
+    // Visual feedback
+    button.style.opacity = '0.5';
+    button.disabled = true;
+    setTimeout(() => {
+      button.style.opacity = '1';
+      button.disabled = false;
+    }, 500);
 
     const key = 'pushUrl';
     const defaultValue = 'http://192.168.31.204:9978/action';
@@ -28,22 +32,93 @@ function pushButton(td, file) {
       pushUrl = defaultValue;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => { controller.abort(); }, 2000);
     fetch(pushUrl, {
       method: 'POST',
       mode: 'no-cors',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: params.toString(),
+      body: new URLSearchParams({ do: 'push', url }).toString(),
+      signal: controller.signal,
     }).then(response => {
-      console.log(response); // Response is opaque
+      clearTimeout(timeoutId);
+      showToast(`Send to ${pushUrl}`);
     }).catch(error => {
-      console.error('Fetch failed', error);
+      clearTimeout(timeoutId);
+      playMedia(url);
+    }).finally(() => {
+      button.disabled = false; // Ensure the button is enabled
     });
   };
 
-  if (file.type !== 'directory') {
+  if (isStreamingMedia(file.path)) {
     td.prepend(button);
+  }
+}
+
+function isStreamingMedia(path) {
+  const streamingMediaExtensions = [
+    // Video
+    'mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv', 'm3u8', 'ts',
+    // Audio
+    'mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'wma'
+  ];
+
+  return streamingMediaExtensions.some(extension => path.endsWith(`.${extension}`));
+}
+
+function playMedia(url) {
+  let playerContainer = document.getElementById('mediaPlayerContainer');
+  if (!playerContainer) {
+    playerContainer = document.createElement('div');
+    playerContainer.id = 'mediaPlayerContainer';
+    playerContainer.style.position = 'fixed';
+    playerContainer.style.top = '50%';
+    playerContainer.style.left = '50%';
+    playerContainer.style.transform = 'translate(-50%, -50%)';
+    playerContainer.style.zIndex = '1000';
+    playerContainer.style.backgroundColor = 'black';
+    playerContainer.style.padding = '0';
+    playerContainer.style.width = '80%';
+    playerContainer.style.height = 'auto';
+    playerContainer.style.maxHeight = '90vh';
+    playerContainer.style.overflow = 'auto';
+
+    const video = document.createElement('video');
+    video.src = url;
+    video.controls = true;
+    video.style.width = '100%';
+    video.style.height = 'auto';
+    video.autoplay = true;
+
+    const closeButton = document.createElement('button');
+    closeButton.innerText = '✖ Close';
+    closeButton.style.position = 'absolute';
+    closeButton.style.top = '20px';
+    closeButton.style.right = '20px';
+    closeButton.style.color = 'white';
+    closeButton.style.border = 'none';
+    closeButton.style.borderRadius = '5px';
+    closeButton.style.padding = '10px 15px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.fontSize = '16px';
+
+    closeButton.onclick = () => {
+      document.body.removeChild(playerContainer);
+      video.pause();
+      video.src = ''; // Clean video source
+    };
+
+    playerContainer.appendChild(video);
+    playerContainer.appendChild(closeButton);
+    document.body.appendChild(playerContainer);
+  } else {
+    // If player exists, update video source and play again
+    const video = playerContainer.querySelector('video');
+    video.src = url;
+    video.play();
   }
 }
 

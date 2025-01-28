@@ -11,11 +11,17 @@
     <div class="container">
       <h1>Temp Pad <a href="files.html">File Server</a></h1>
       <textarea id="text-area" placeholder="Text here..."></textarea>
-      <button id="saveButton">Save</button>
-      <button id="refreshButton">Refresh</button>
-      <span id="message"></span>
-      <h2>List</h2>
-      <ul id="history-list"></ul>
+      <div class="button-container">
+        <button id="saveButton">Save</button>
+        <button id="refreshButton">Refresh</button>
+      </div>
+      <div class="message-container">
+        <span id="message"></span>
+      </div>
+      <div class="list-container">
+        <h2>List</h2>
+        <ul id="history-list"></ul>
+      </div>
     </div>
     <script type="module" src="js/pad.js"></script>
   </body>

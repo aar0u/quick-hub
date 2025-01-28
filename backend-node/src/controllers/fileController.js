@@ -178,7 +178,7 @@ const getHandler = (req, res) => {
 
 const checkHandler = (req, res) => {
   const { dirname = '', filename } = req.body;
-  const filePath = path.join(workingDir, decodeURIComponent(dirname), filename);
+  const filePath = path.join(workingDir, dirname, filename);
 
   if (!filename) {
     return utils.jsonResponse(res, 'failed', 'No filename provided');

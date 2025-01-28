@@ -5,7 +5,6 @@ const elements = {
   fileInput: document.getElementById('fileInput'),
   message: document.getElementById('message'),
   folder: document.getElementById('folder'),
-  listStatus: document.getElementById('fetchStatus'),
   fileList: document
     .getElementById('fileList')
     .getElementsByTagName('tbody')[0],
@@ -15,14 +14,14 @@ let dirname = '';
 
 async function updateList() {
   try {
-    elements.listStatus.textContent = '';
-    elements.listStatus.style.color = '';
+    elements.message.textContent = '';
+    elements.message.style.color = '';
 
     const result = await fetchList(dirname);
 
     if (result.status !== 'success') {
-      elements.listStatus.textContent = result.message;
-      elements.listStatus.style.color = 'red';
+      elements.message.textContent = result.message;
+      elements.message.style.color = 'red';
     }
 
     elements.folder.textContent = result.data.folder;
@@ -33,8 +32,8 @@ async function updateList() {
     });
   } catch (error) {
     console.error('Error:', error);
-    elements.listStatus.textContent = error.message;
-    elements.listStatus.style.color = 'red';
+    elements.message.textContent = error.message;
+    elements.message.style.color = 'red';
   }
 }
 
@@ -86,7 +85,7 @@ function createFileRow(file) {
   tr.appendChild(document.createElement('td')).textContent = file.uploadTime || '-';
 
   (async () => {
-    try { const module = await import('./fileActions.js'); module.pushButton(td, file); }
+    try { (await import('./fileActions.js')).pushButton(td, file); }
     catch (e) { /* Ignore error */ }
   })();
 

@@ -40,18 +40,23 @@
   font-weight: bold;
 }
 
-span[role='button'] {
-  margin-bottom: 1rem;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  display: inline-block;
-}
-
 #folder {
   font-size: medium;
 }
 
-#fetchStatus {
-  font-size: medium;
-  font-weight: normal;
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.button-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.button-container input[type="file"] {
+  margin-bottom: 0;
+  width: 30vw;
 }

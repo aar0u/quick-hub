@@ -57,7 +57,7 @@ tasks.shadowJar {
     // Inherit configurations from the standard jar task
     from(tasks.jar.get().outputs)
 
-    archiveClassifier.set("fat")
+    archiveFileName.set("${project.name}.jar")
 }
 
 tasks.register<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("lib") {

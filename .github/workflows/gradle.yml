@@ -7,6 +7,7 @@ on:
     paths:
       - 'backend-kotlin/**'
       - 'android/**'
+      - 'static/**'
       - '.github/workflows/**'
 
 permissions:
@@ -55,7 +56,7 @@ jobs:
         with:
           tag: r-${{ steps.set-vars.outputs.short_timestamp }}
           name: "Release ${{ steps.set-vars.outputs.short_timestamp }}"
-          artifacts: backend-kotlin/build/libs/*-fat.jar
+          artifacts: backend-kotlin/build/libs/!(*[0-9]*).jar
           allowUpdates: true
 
   frontend:
@@ -90,7 +91,7 @@ jobs:
         run: |
           ls -lR ~/.m2/repository/com/github/aar0u/quick-hub
           ./gradlew assembleDebug -PcommitSha=${{ needs.backend.outputs.short_sha }} -PversionCode=1
-          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/quick-hub-1.0.apk
+          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/quick-hub.apk
 
       - name: Github Release
         uses: ncipollo/release-action@v1

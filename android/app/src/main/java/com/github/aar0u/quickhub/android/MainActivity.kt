@@ -35,9 +35,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,10 +58,12 @@ import com.github.aar0u.quickhub.model.Config
 import java.io.File
 
 private const val tag = "quick-hub"
+private val toggleState = mutableStateOf(false)
 
 class MainActivity : ComponentActivity() {
     private val logViewModel: LogViewModel by viewModels()
     private lateinit var folderPickerLauncher: ActivityResultLauncher<Uri?>
+    private lateinit var permissionLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,35 +71,33 @@ class MainActivity : ComponentActivity() {
         setContent {
             Theme1 {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ComposeMainColumn1(
-                        modifier = Modifier.padding(innerPadding),
+                    ComposeMainColumn1(modifier = Modifier.padding(innerPadding),
                         logList = logViewModel.logList,
                         onCheckStoragePermissions = { checkStoragePermissions() },
                         onRequestStoragePermissions = { requestStoragePermissions() },
                         onReceiveApk = { installApk(file = it) },
-                        onOpenFolderPicker = { openFolderPicker() },
-                        onGetSerConfig = { getSerConfig() }
-                    )
+                        onOpenFolderPicker = { folderPickerLauncher.launch(null) },
+                        onGetSerConfig = { getSerConfig(it) })
                 }
             }
         }
 
-        initFolderPicker()
         logViewModel.startLogCapture()
+        initFolderPickerLauncher()
+        initPermissionLauncher()
     }
 
     private fun requestStoragePermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
             intent.data = Uri.parse("package:$packageName")
-            startActivity(intent)
+            permissionLauncher.launch(intent)
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestPermissions(
                 arrayOf(
                     Manifest.permission.WRITE_EXTERNAL_STORAGE,
                     Manifest.permission.READ_EXTERNAL_STORAGE
-                ),
-                1
+                ), 1
             )
         }
     }
@@ -105,13 +107,10 @@ class MainActivity : ComponentActivity() {
             Environment.isExternalStorageManager()
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED &&
-                    ContextCompat.checkSelfPermission(
-                        this,
-                        Manifest.permission.READ_EXTERNAL_STORAGE
-                    ) == PackageManager.PERMISSION_GRANTED
+                this, Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+                this, Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
         } else {
             true // Permissions are granted by default on older Android versions
         }
@@ -120,34 +119,36 @@ class MainActivity : ComponentActivity() {
     private fun installApk(file: File) {
         if (file.path.endsWith(".apk")) {
             val apkUri = FileProvider.getUriForFile(
-                this,
-                "${this.packageName}.FileProvider",
-                file
+                this, "${this.packageName}.FileProvider", file
             )
             Log.i(tag, "Install APK: $file")
             val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                flags =
-                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
                 setDataAndType(
-                    apkUri,
-                    "application/vnd.android.package-archive"
+                    apkUri, "application/vnd.android.package-archive"
                 )
             }
             this.startActivity(installIntent)
         }
     }
 
-    private fun initFolderPicker() {
+    private fun initPermissionLauncher() {
+        permissionLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                Log.i(tag, "Activity result: $result")
+                // Sync toggleState
+                toggleState.value = checkStoragePermissions()
+            }
+    }
+
+    private fun initFolderPickerLauncher() {
         folderPickerLauncher =
             registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
                 uri?.let {
                     val folderPath = getAbsolutePathFromUri(it)
                     Log.i(tag, "Root folder: $folderPath")
-                    applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE)
-                    val editor =
-                        applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE).edit()
-                    editor.putString("path", folderPath)
-                    editor.apply()
+                    applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE).edit()
+                        .putString("path", folderPath).commit()
                 }
             }
     }
@@ -160,19 +161,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun openFolderPicker() {
-        folderPickerLauncher.launch(null)
-    }
-
-    private fun getSerConfig(): Config {
-        val folderPath = applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE)
-            .getString("path", null)
-        return Config(
-            folderPath
-                ?: Environment.getExternalStorageDirectory().absolutePath,
-            3006,
-            overwrite = true
-        )
+    private fun getSerConfig(toggleState: Boolean): Config? {
+        val rootFolder =
+            Environment.getExternalStorageDirectory().absolutePath.takeIf { toggleState }
+                ?: applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE)
+                    .getString("path", null)
+        return rootFolder?.let { Config(it, 3006, overwrite = true) }
     }
 }
 
@@ -184,7 +178,7 @@ fun ComposeMainColumn1(
     onRequestStoragePermissions: () -> Unit = {},
     onReceiveApk: (File) -> Unit = {},
     onOpenFolderPicker: () -> Unit = {},
-    onGetSerConfig: () -> Config? = { null }
+    onGetSerConfig: (Boolean) -> Config? = { null }
 ) {
     Column(
         modifier = modifier.fillMaxSize(),
@@ -201,35 +195,9 @@ fun ComposeMainColumn1(
         ) {
             Button(
                 onClick = {
-                    onOpenFolderPicker()
-                },
-                modifier = modifierBtn,
-                contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors()
-            ) {
-                Text("...")
-            }
-
-            Button(
-                onClick = {
-                    if (isBusy.value) return@Button
-                    isBusy.value = true
-                    if (isServerRunning.value) {
-                        Log.i(tag, "Stopping HTTP server")
-                        stopServer()
-                    } else {
-                        if (onCheckStoragePermissions()) {
-                            Log.i(tag, "Starting HTTP server")
-                            onGetSerConfig()?.let { serverConfig ->
-                                startServer(serverConfig) { file -> onReceiveApk(file) }
-                            } ?: run {
-                                Log.e(tag, "Server configuration is null, cannot start server.")
-                            }
-                        } else {
-                            onRequestStoragePermissions()
-                            isBusy.value = false
-                        }
-                    }
+                    handleServerButtonClick(
+                        toggleState.value, onGetSerConfig, onReceiveApk
+                    )
                 },
                 modifier = modifierBtn,
                 contentPadding = PaddingValues(0.dp),
@@ -241,9 +209,56 @@ fun ComposeMainColumn1(
                     contentDescription = if (isServerRunning.value) "Stop Server" else "Start Server",
                 )
             }
+
+            Button(
+                onClick = onOpenFolderPicker,
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.buttonColors(),
+                enabled = !toggleState.value,
+                modifier = modifierBtn,
+            ) {
+                Text("...")
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Switch(
+                    checked = toggleState.value,
+                    onCheckedChange = {
+
+                        if (it && !onCheckStoragePermissions()) {
+                            onRequestStoragePermissions()
+                        }
+                        toggleState.value = it
+                    },
+                )
+                Text("SD Card")
+            }
         }
 
         AutoScrollingLog(logList)
+    }
+}
+
+private fun handleServerButtonClick(
+    toggleSd: Boolean, onGetSerConfig: (Boolean) -> Config?, onReceiveApk: (File) -> Unit
+) {
+    if (isBusy.value) return
+    isBusy.value = true
+
+    if (isServerRunning.value) {
+        Log.i(tag, "Stopping HTTP server")
+        stopServer()
+    } else {
+        Log.i(tag, "Starting HTTP server")
+        onGetSerConfig(toggleSd)?.let { serverConfig ->
+            startServer(serverConfig) { file -> onReceiveApk(file) }
+        } ?: run {
+            Log.e(tag, "Configure root folder first")
+            isBusy.value = false
+        }
     }
 }
 
@@ -252,23 +267,21 @@ fun AutoScrollingLog(logList: List<String>) {
     val listState = rememberLazyListState()
 
     LaunchedEffect(logList.size) {
-        listState.animateScrollToItem(logList.size)
+        if (logList.isNotEmpty()) {
+            listState.animateScrollToItem(logList.size - 1)
+        }
     }
 
     LazyColumn(
-        state = listState,
+        state = listState, modifier = Modifier.fillMaxSize()
     ) {
         itemsIndexed(logList) { index, log ->
-            val rowColor =
-                if (log.lowercase().contains("error") or log.lowercase()
-                        .contains("exception")
-                ) {
-                    Color.Red
-                } else if (index % 2 == 0) {
-                    Color.LightGray // Even rows
-                } else {
-                    Color.White // Odd rows
-                }
+            val keywords = listOf("error", "exception")
+            val rowColor = when {
+                keywords.any { log.contains(it, ignoreCase = true) } -> Color.Red
+                index % 2 == 0 -> Color.LightGray // Even rows
+                else -> Color.White // Odd rows
+            }
             Text(
                 log,
                 modifier = Modifier
@@ -287,8 +300,7 @@ fun Column1Preview() {
     Theme1 {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             ComposeMainColumn1(
-                modifier = Modifier.padding(innerPadding),
-                logList = """
+                modifier = Modifier.padding(innerPadding), logList = """
         This is a very long text that will demonstrate the scrolling behavior.
         It should be long enough to go beyond the screen's boundaries.
         This is a very long text that will demonstrate the scrolling behavior.

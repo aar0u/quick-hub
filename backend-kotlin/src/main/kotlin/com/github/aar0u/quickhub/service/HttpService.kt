@@ -39,13 +39,13 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
 
     override fun start() {
         try {
+            super.start()
+            log.info("Server started on ${config.host}:${config.port} from ${config.workingDir}")
             NetworkUtils.getIpAddresses().forEach { (name, addresses) ->
                 addresses.forEach { address ->
                     log.info("$name: http://$address:${config.port}")
                 }
             }
-            super.start()
-            log.info("Server started on port ${config.port}")
         } catch (e: Exception) {
             stop()
             log.error("Server error: ${e.message}", e)

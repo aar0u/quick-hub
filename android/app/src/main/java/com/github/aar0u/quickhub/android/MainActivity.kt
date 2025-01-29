@@ -12,11 +12,14 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -49,12 +52,14 @@ import com.github.aar0u.quickhub.android.HttpRunner.isBusy
 import com.github.aar0u.quickhub.android.HttpRunner.isServerRunning
 import com.github.aar0u.quickhub.android.HttpRunner.startServer
 import com.github.aar0u.quickhub.android.HttpRunner.stopServer
+import com.github.aar0u.quickhub.model.Config
 import java.io.File
 
 private const val tag = "quick-hub"
 
 class MainActivity : ComponentActivity() {
     private val logViewModel: LogViewModel by viewModels()
+    private lateinit var folderPickerLauncher: ActivityResultLauncher<Uri?>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,16 +67,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             Theme1 {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    MainColumn1(
+                    ComposeMainColumn1(
                         modifier = Modifier.padding(innerPadding),
                         logList = logViewModel.logList,
                         onCheckStoragePermissions = { checkStoragePermissions() },
                         onRequestStoragePermissions = { requestStoragePermissions() },
-                        onReceiveApk = { installApk(file = it) }
+                        onReceiveApk = { installApk(file = it) },
+                        onOpenFolderPicker = { openFolderPicker() },
+                        onGetSerConfig = { getSerConfig() }
                     )
                 }
             }
         }
+
+        initFolderPicker()
         logViewModel.startLogCapture()
     }
 
@@ -127,49 +136,111 @@ class MainActivity : ComponentActivity() {
             this.startActivity(installIntent)
         }
     }
+
+    private fun initFolderPicker() {
+        folderPickerLauncher =
+            registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+                uri?.let {
+                    val folderPath = getAbsolutePathFromUri(it)
+                    Log.i(tag, "Root folder: $folderPath")
+                    applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE)
+                    val editor =
+                        applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE).edit()
+                    editor.putString("path", folderPath)
+                    editor.apply()
+                }
+            }
+    }
+
+    private fun getAbsolutePathFromUri(uri: Uri): String? {
+        return uri.path?.let { it ->
+            it.split(":").takeIf { it[0].endsWith("primary") }?.let {
+                Environment.getExternalStorageDirectory().absolutePath + "/" + it[1]
+            }
+        }
+    }
+
+    private fun openFolderPicker() {
+        folderPickerLauncher.launch(null)
+    }
+
+    private fun getSerConfig(): Config {
+        val folderPath = applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE)
+            .getString("path", null)
+        return Config(
+            folderPath
+                ?: Environment.getExternalStorageDirectory().absolutePath,
+            3006,
+            overwrite = true
+        )
+    }
 }
 
 @Composable
-fun MainColumn1(
+fun ComposeMainColumn1(
     modifier: Modifier = Modifier,
     logList: List<String>,
     onCheckStoragePermissions: () -> Boolean = { true },
     onRequestStoragePermissions: () -> Unit = {},
-    onReceiveApk: (File) -> Unit = {}
+    onReceiveApk: (File) -> Unit = {},
+    onOpenFolderPicker: () -> Unit = {},
+    onGetSerConfig: () -> Config? = { null }
 ) {
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Button(
-            onClick = {
-                if (isBusy.value) return@Button
-                isBusy.value = true
-                if (isServerRunning.value) {
-                    Log.i(tag, "Stopping HTTP server")
-                    stopServer()
-                } else {
-                    if (onCheckStoragePermissions()) {
-                        Log.i(tag, "Starting HTTP server")
-                        startServer { file -> onReceiveApk(file) }
-                    } else {
-                        onRequestStoragePermissions()
-                        isBusy.value = false
-                    }
-                }
-            },
-            modifier = Modifier
-                .size(60.dp)
-                .clip(CircleShape),
-            contentPadding = PaddingValues(0.dp),
-            colors = ButtonDefaults.buttonColors(),
-            enabled = !isBusy.value
+        val modifierBtn = Modifier
+            .size(60.dp)
+            .clip(CircleShape)
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = if (isServerRunning.value) Icons.Rounded.Close else Icons.Rounded.PlayArrow,
-                contentDescription = if (isServerRunning.value) "Stop Server" else "Start Server",
-            )
+            Button(
+                onClick = {
+                    onOpenFolderPicker()
+                },
+                modifier = modifierBtn,
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.buttonColors()
+            ) {
+                Text("...")
+            }
+
+            Button(
+                onClick = {
+                    if (isBusy.value) return@Button
+                    isBusy.value = true
+                    if (isServerRunning.value) {
+                        Log.i(tag, "Stopping HTTP server")
+                        stopServer()
+                    } else {
+                        if (onCheckStoragePermissions()) {
+                            Log.i(tag, "Starting HTTP server")
+                            onGetSerConfig()?.let { serverConfig ->
+                                startServer(serverConfig) { file -> onReceiveApk(file) }
+                            } ?: run {
+                                Log.e(tag, "Server configuration is null, cannot start server.")
+                            }
+                        } else {
+                            onRequestStoragePermissions()
+                            isBusy.value = false
+                        }
+                    }
+                },
+                modifier = modifierBtn,
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.buttonColors(),
+                enabled = !isBusy.value
+            ) {
+                Icon(
+                    imageVector = if (isServerRunning.value) Icons.Rounded.Close else Icons.Rounded.PlayArrow,
+                    contentDescription = if (isServerRunning.value) "Stop Server" else "Start Server",
+                )
+            }
         }
 
         AutoScrollingLog(logList)
@@ -215,7 +286,7 @@ fun AutoScrollingLog(logList: List<String>) {
 fun Column1Preview() {
     Theme1 {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            MainColumn1(
+            ComposeMainColumn1(
                 modifier = Modifier.padding(innerPadding),
                 logList = """
         This is a very long text that will demonstrate the scrolling behavior.

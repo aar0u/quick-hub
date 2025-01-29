@@ -1,6 +1,5 @@
 package com.github.aar0u.quickhub.android
 
-import android.os.Environment
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import com.github.aar0u.quickhub.model.Config
@@ -28,17 +27,10 @@ object HttpRunner {
                 }
     )
 
-    fun startServer(listener: (File) -> Unit) {
+    fun startServer(config: Config, listener: (File) -> Unit) {
         serverCoroutine?.cancel()
         serverCoroutine = serverScope.launch {
-            val config = Config(
-                Environment.getExternalStorageDirectory().absolutePath,
-                3000,
-                overwrite = true
-            )
-            httpService = HttpService(
-                config, listener
-            )
+            httpService = HttpService(config, listener)
             httpService?.start()
             delay(500)
             isServerRunning.value = true

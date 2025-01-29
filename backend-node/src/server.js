@@ -2,10 +2,10 @@
 
 import { networkInterfaces } from 'os';
 import { app } from './app.js';
-import { port, host } from './config.js';
+import { port, host, workingDir } from './config.js';
 
 const server = app.listen(port, host, () => {
-  console.log(`running on http://${host}:${port}`);
+  console.log(`Server Started on ${host}:${port} from ${workingDir}`);
   const ip = getIP();
   for (const [key, value] of Object.entries(ip)) {
     console.log(

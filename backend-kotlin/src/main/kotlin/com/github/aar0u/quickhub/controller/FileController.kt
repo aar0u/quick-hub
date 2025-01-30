@@ -150,7 +150,7 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
     ): NanoHTTPD.Response {
         val metadata = session.headers["x-file-metadata"]?.let { metadataStr ->
             runCatching {
-                val decode = URLDecoder.decode(metadataStr, StandardCharsets.UTF_8)
+                val decode = URLDecoder.decode(metadataStr, StandardCharsets.UTF_8.name())
                 gson.fromJson<Map<String, String>>(decode, object : TypeToken<Map<String, String>>() {}.type)
             }.getOrNull()
         } ?: run {

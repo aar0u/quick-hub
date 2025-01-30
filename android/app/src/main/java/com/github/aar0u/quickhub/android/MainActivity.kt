@@ -76,7 +76,11 @@ class MainActivity : ComponentActivity() {
                         onCheckStoragePermissions = { checkStoragePermissions() },
                         onRequestStoragePermissions = { requestStoragePermissions() },
                         onReceiveApk = { installApk(file = it) },
-                        onOpenFolderPicker = { folderPickerLauncher.launch(null) },
+                        onOpenFolderPicker = {
+                            runCatching { folderPickerLauncher.launch(null) }.onFailure { e ->
+                                Log.e(tag, "$e")
+                            }
+                        },
                         onGetSerConfig = { getSerConfig(it) })
                 }
             }

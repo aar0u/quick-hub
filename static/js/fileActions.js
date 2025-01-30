@@ -2,7 +2,7 @@ import { escapeFilename, showToast } from './utils.js';
 
 function pushButton(td, file) {
   const url = `${window.location.protocol}//${window.location.hostname}${window.location.port
-    ? ':' + window.location.port : ''}/file/get/${escapeFilename(file.path)}`;
+    ? ':' + window.location.port : ''}/file/${escapeFilename(file.path)}`;
 
   const button = document.createElement('span');
   button.innerHTML = `

@@ -66,9 +66,7 @@ function createFileRow(file) {
   const tr = document.createElement('tr');
   const fileName = escapeFilename(file.path);
   const href =
-    file.type === 'directory'
-      ? `/file/${fileName}`
-      : `/file/get/${fileName}`;
+    file.type === 'directory' ? `#` : `/file/${fileName}`;
 
   const td = document.createElement('td');
   const a = document.createElement('a');

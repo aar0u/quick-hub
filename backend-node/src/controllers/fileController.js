@@ -146,7 +146,7 @@ const getHandler = (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(workingDir, filename);
   const rangeHeader = req.headers.range;
-  console.log(`Get file: ${filename} (${rangeHeader})`);
+  console.log(`Get file: ${filename} ${rangeHeader ? `(${rangeHeader})` : ''}`);
 
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {

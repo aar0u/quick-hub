@@ -73,7 +73,7 @@ class HttpService(private val config: Config, private val listener: OnFileReceiv
             // First try exact matches
             routes[session.uri]?.invoke(session)
                 // Then try file get handler
-                ?: if (session.uri.startsWith("/file/get/")) {
+                ?: if (session.uri.startsWith("/file/")) {
                     fileController.handleFileRequest(session)
                 } else {
                     serveStaticFile(session.uri)

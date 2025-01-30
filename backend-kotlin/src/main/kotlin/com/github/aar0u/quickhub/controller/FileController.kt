@@ -217,10 +217,10 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
     }
 
     fun handleFileRequest(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
-        val filename = session.uri.removePrefix("/file/get/")
+        val filename = session.uri.removePrefix("/file/")
         val file = File(Paths.get(config.workingDir, filename).toString())
         val rangeHeader = session.headers["range"]
-        log.info("Get file: ${file.name} ($rangeHeader)")
+        log.info("Get file: ${file.name} ${rangeHeader?.let { "($it)" } ?: ""}")
 
         if (!file.exists()) {
             return newFixedLengthResponse(

@@ -8,6 +8,6 @@ const router = express.Router();
 router.post('/list', fileController.listHandler);
 router.post('/check', fileController.checkHandler);
 router.post('/add', fileController.uploadHandler);
-router.get('/get/:filename(*)', fileController.getHandler);
+router.get('/:filename(*)', fileController.getHandler);
 
 export { router };

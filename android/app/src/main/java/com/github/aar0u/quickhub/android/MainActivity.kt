@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
         permissionLauncher = initPermissionLauncher()
 
         logViewModel.startLogCapture()
-        toggleState.value = sdPath.equals(sharedPreferences.getString("path", null))
+        toggleState.value = sdPath.equals(sharedPreferences.getString("path", null)) && checkStoragePermissions()
     }
 
     private fun requestStoragePermissions() {
@@ -189,8 +189,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun getSerConfig(): Config? {
-        val userSd by lazy { checkStoragePermissions() && toggleState.value }
-        return sharedPreferences.getString("path", null)?.takeIf { it != sdPath || userSd }
+        return sharedPreferences.getString("path", null)?.takeIf { it != sdPath || toggleState.value }
             ?.let { Config(it, 3006, overwrite = true) }
     }
 

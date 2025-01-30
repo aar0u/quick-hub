@@ -58,12 +58,16 @@ import com.github.aar0u.quickhub.model.Config
 import java.io.File
 
 private const val tag = "quick-hub"
+private val versionGreater29 = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q
+private val versionGreater22 = Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1
 private val toggleState = mutableStateOf(false)
+private val sdPath = Environment.getExternalStorageDirectory().absolutePath
 
 class MainActivity : ComponentActivity() {
     private val logViewModel: LogViewModel by viewModels()
     private lateinit var folderPickerLauncher: ActivityResultLauncher<Uri?>
-    private lateinit var permissionLauncher: ActivityResultLauncher<Intent>
+    private lateinit var permissionSettingLauncher: ActivityResultLauncher<Intent>
+    private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,43 +77,43 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     ComposeMainColumn1(modifier = Modifier.padding(innerPadding),
                         logList = logViewModel.logList,
-                        onCheckStoragePermissions = { checkStoragePermissions() },
-                        onRequestStoragePermissions = { requestStoragePermissions() },
+                        onUpdateToggleState = { updateToggleState(it) },
                         onReceiveApk = { installApk(file = it) },
                         onOpenFolderPicker = {
-                            runCatching { folderPickerLauncher.launch(null) }.onFailure { e ->
-                                Log.e(tag, "$e")
-                            }
+                            if (versionGreater29) folderPickerLauncher.launch(null)
                         },
-                        onGetSerConfig = { getSerConfig(it) })
+                        onGetSerConfig = { getSerConfig() })
                 }
             }
         }
 
+        folderPickerLauncher = initFolderPickerLauncher()
+        permissionSettingLauncher = initPermissionSettingLauncher()
+        permissionLauncher = initPermissionLauncher()
+
         logViewModel.startLogCapture()
-        initFolderPickerLauncher()
-        initPermissionLauncher()
+        toggleState.value = sdPath.equals(sharedPreferences.getString("path", null))
     }
 
     private fun requestStoragePermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        if (versionGreater29) {
             val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
             intent.data = Uri.parse("package:$packageName")
-            permissionLauncher.launch(intent)
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            requestPermissions(
+            permissionSettingLauncher.launch(intent)
+        } else if (versionGreater22) {
+            permissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.WRITE_EXTERNAL_STORAGE,
                     Manifest.permission.READ_EXTERNAL_STORAGE
-                ), 1
+                )
             )
         }
     }
 
     private fun checkStoragePermissions(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        return if (versionGreater29) {
             Environment.isExternalStorageManager()
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        } else if (versionGreater22) {
             ContextCompat.checkSelfPermission(
                 this, Manifest.permission.WRITE_EXTERNAL_STORAGE
             ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
@@ -136,41 +140,62 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun initPermissionLauncher() {
-        permissionLauncher =
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-                Log.i(tag, "Activity result: $result")
-                // Sync toggleState
-                toggleState.value = checkStoragePermissions()
-            }
+    private fun initPermissionSettingLauncher(): ActivityResultLauncher<Intent> {
+        return registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            Log.i(tag, "Activity result: $result")
+            syncToggleState()
+        }
     }
 
-    private fun initFolderPickerLauncher() {
-        folderPickerLauncher =
-            registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
-                uri?.let {
-                    val folderPath = getAbsolutePathFromUri(it)
-                    Log.i(tag, "Root folder: $folderPath")
-                    applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE).edit()
-                        .putString("path", folderPath).commit()
-                }
-            }
-    }
-
-    private fun getAbsolutePathFromUri(uri: Uri): String? {
-        return uri.path?.let { it ->
-            it.split(":").takeIf { it[0].endsWith("primary") }?.let {
-                Environment.getExternalStorageDirectory().absolutePath + "/" + it[1]
+    private fun initFolderPickerLauncher(): ActivityResultLauncher<Uri?> {
+        return registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+            uri?.let {
+                val folderPath = getAbsolutePathFromUri(it)
+                Log.i(tag, "Root folder: $folderPath")
+                sharedPreferences.edit().putString("path", folderPath).commit()
             }
         }
     }
 
-    private fun getSerConfig(toggleState: Boolean): Config? {
-        val rootFolder =
-            Environment.getExternalStorageDirectory().absolutePath.takeIf { toggleState }
-                ?: applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE)
-                    .getString("path", null)
-        return rootFolder?.let { Config(it, 3006, overwrite = true) }
+    private fun initPermissionLauncher(): ActivityResultLauncher<Array<String>> {
+        return registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            Log.i(tag, "Activity result: $permissions")
+            syncToggleState()
+        }
+    }
+
+    private fun updateToggleState(isChecked: Boolean) {
+        if (isChecked && !syncToggleState()) {
+            requestStoragePermissions()
+        } else {
+            toggleState.value = isChecked
+        }
+    }
+
+    private fun syncToggleState(): Boolean {
+        toggleState.value = checkStoragePermissions()
+        if (toggleState.value) {
+            sharedPreferences.edit().putString("path", sdPath).apply()
+        }
+        return toggleState.value
+    }
+
+    private fun getAbsolutePathFromUri(uri: Uri): String? {
+        return uri.path?.split(":")?.takeIf {
+            it.getOrNull(0)?.endsWith("primary") ?: false
+        }?.let {
+            sdPath + "/" + it.getOrNull(1)
+        }
+    }
+
+    private fun getSerConfig(): Config? {
+        val userSd by lazy { checkStoragePermissions() && toggleState.value }
+        return sharedPreferences.getString("path", null)?.takeIf { it != sdPath || userSd }
+            ?.let { Config(it, 3006, overwrite = true) }
+    }
+
+    private val sharedPreferences by lazy {
+        applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE)
     }
 }
 
@@ -178,11 +203,10 @@ class MainActivity : ComponentActivity() {
 fun ComposeMainColumn1(
     modifier: Modifier = Modifier,
     logList: List<String>,
-    onCheckStoragePermissions: () -> Boolean = { true },
-    onRequestStoragePermissions: () -> Unit = {},
+    onUpdateToggleState: (Boolean) -> Unit = {},
     onReceiveApk: (File) -> Unit = {},
     onOpenFolderPicker: () -> Unit = {},
-    onGetSerConfig: (Boolean) -> Config? = { null }
+    onGetSerConfig: () -> Config? = { null }
 ) {
     Column(
         modifier = modifier.fillMaxSize(),
@@ -199,9 +223,7 @@ fun ComposeMainColumn1(
         ) {
             Button(
                 onClick = {
-                    handleServerButtonClick(
-                        toggleState.value, onGetSerConfig, onReceiveApk
-                    )
+                    handleServerButtonClick(onGetSerConfig, onReceiveApk)
                 },
                 modifier = modifierBtn,
                 contentPadding = PaddingValues(0.dp),
@@ -218,7 +240,7 @@ fun ComposeMainColumn1(
                 onClick = onOpenFolderPicker,
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(),
-                enabled = !toggleState.value,
+                enabled = versionGreater29 && !toggleState.value,
                 modifier = modifierBtn,
             ) {
                 Text("...")
@@ -230,13 +252,7 @@ fun ComposeMainColumn1(
             ) {
                 Switch(
                     checked = toggleState.value,
-                    onCheckedChange = {
-
-                        if (it && !onCheckStoragePermissions()) {
-                            onRequestStoragePermissions()
-                        }
-                        toggleState.value = it
-                    },
+                    onCheckedChange = { onUpdateToggleState(it) },
                 )
                 Text("SD Card")
             }
@@ -247,7 +263,7 @@ fun ComposeMainColumn1(
 }
 
 private fun handleServerButtonClick(
-    toggleSd: Boolean, onGetSerConfig: (Boolean) -> Config?, onReceiveApk: (File) -> Unit
+    onGetSerConfig: () -> Config?, onReceiveApk: (File) -> Unit
 ) {
     if (isBusy.value) return
     isBusy.value = true
@@ -257,10 +273,10 @@ private fun handleServerButtonClick(
         stopServer()
     } else {
         Log.i(tag, "Starting HTTP server")
-        onGetSerConfig(toggleSd)?.let { serverConfig ->
+        onGetSerConfig()?.let { serverConfig ->
             startServer(serverConfig) { file -> onReceiveApk(file) }
         } ?: run {
-            Log.e(tag, "Configure root folder first")
+            Log.e(tag, "Error occurred, please check permission")
             isBusy.value = false
         }
     }

@@ -18,8 +18,8 @@ dependencies {
     implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation("org.nanohttpd:nanohttpd-apache-fileupload:2.3.1")
     implementation("com.google.code.gson:gson:2.10.1")
-    implementation("ch.qos.logback:logback-classic:1.4.12")
     implementation("org.slf4j:slf4j-api:2.0.9")
+    implementation("ch.qos.logback:logback-classic:1.5.13")
     testImplementation(kotlin("test"))
 }
 
@@ -73,6 +73,7 @@ tasks.register<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("lib"
     dependencies {
         exclude(dependency("org.jetbrains.kotlin:kotlin-stdlib"))
         exclude(dependency("org.jetbrains:annotations"))
+        exclude(dependency("ch.qos.logback:logback-core"))
         exclude(dependency("ch.qos.logback:logback-classic"))
         exclude(dependency("org.slf4j:slf4j-api"))
     }

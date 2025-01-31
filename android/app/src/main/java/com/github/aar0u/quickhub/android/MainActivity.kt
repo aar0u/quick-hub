@@ -273,7 +273,7 @@ private fun handleServerButtonClick(
         onGetSerConfig()?.let { serverConfig ->
             startServer(serverConfig) { file -> onReceiveApk(file) }
         } ?: run {
-            Log.e(tag, "Error occurred, please check permission")
+            Log.e(tag, "An error occurred, please check permission")
             isBusy.value = false
         }
     }

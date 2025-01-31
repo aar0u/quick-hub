@@ -2,8 +2,13 @@ package com.github.aar0u.quickhub.android
 
 import android.content.Context
 import android.util.Log
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.LoggerContext
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.AppenderBase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -17,6 +22,8 @@ object Log {
     val logList: StateFlow<List<String>> = _logList // expose logList as a StateFlow
 
     fun init(context: Context) {
+        captureSlf4j()
+
         logFile = File(context.filesDir, "app_logs.txt")
         if (!logFile.exists()) {
             logFile.createNewFile()
@@ -55,5 +62,34 @@ object Log {
             logFile.appendText("$it\n")
         }
         Log.e(tag, message)
+    }
+
+    private fun captureSlf4j() {
+        val loggerContext = LoggerFactory.getILoggerFactory() as? LoggerContext ?: return
+        val rootLogger = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME)
+
+        if (rootLogger.getAppender("CUSTOM") != null) {
+            return
+        }
+
+        val customAppender = object : AppenderBase<ILoggingEvent>() {
+            override fun append(event: ILoggingEvent) {
+                val message = event.formattedMessage
+                val level = event.level.toString()
+                val loggerName = event.loggerName
+
+                println("Intercepted log - Level: $level, Logger: $loggerName, Message: $message")
+                if (level.equals("ERROR", ignoreCase = true)) {
+                    e(loggerName, message)
+                } else {
+                    i(loggerName, message)
+                }
+            }
+        }.apply {
+            name = "CUSTOM"
+            start()
+        }
+
+        rootLogger.addAppender(customAppender)
     }
 }

@@ -58,7 +58,8 @@ android {
 
 dependencies {
     implementation("com.github.aar0u:quick-hub:1.0")
-    implementation("org.slf4j:slf4j-android:1.7.36")
+    implementation("org.slf4j:slf4j-api:1.7.36")
+    implementation("com.github.tony19:logback-android:2.0.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

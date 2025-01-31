@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 
 private const val maxLog = 500
 
+@Deprecated("")
 class LogViewModel : ViewModel() {
     private val _logList = mutableStateListOf<String>()
     val logList: SnapshotStateList<String> = _logList
@@ -18,17 +19,17 @@ class LogViewModel : ViewModel() {
     private var logJob: Job? = null
 
     fun startLogCapture() {
-        logJob?.cancel() // 防止重复任务
+        logJob?.cancel() // prevent duplicate task
         logJob = viewModelScope.launch(Dispatchers.IO) {
             val process = ProcessBuilder(
                 "logcat",
-                "-T", "0", // 从头开始读取
-                "-v", "time", // 使用时间戳格式
+                "-T", "0", // read from the beginning
+                "-v", "time", // use time stamp format
                 "-s", "quick-hub:V"
             ).start()
             process.inputStream.bufferedReader().useLines { lines ->
                 lines.forEach { line ->
-                    if (line.contains("beginning of main")) return@forEach
+                    if (line.contains("--------- beginning of")) return@forEach
                     withContext(Dispatchers.Main) {
                         addLog(line.substringBefore(".") + " " + line.substringAfter("):"))
                     }
@@ -47,7 +48,7 @@ class LogViewModel : ViewModel() {
 
     override fun onCleared() {
         _logList.clear()
-        logJob?.cancel() // ViewModel销毁时停止日志
+        logJob?.cancel() // stop log when ViewModel is cleared
         logJob = null
         super.onCleared()
     }

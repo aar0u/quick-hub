@@ -5,5 +5,5 @@ import org.slf4j.LoggerFactory
 
 interface Loggable {
     val log: Logger
-        get() = LoggerFactory.getLogger("quick-hub")
+        get() = LoggerFactory.getLogger(this::class.simpleName)
 }

@@ -1,6 +1,5 @@
 package com.github.aar0u.quickhub.android
 
-import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import com.github.aar0u.quickhub.model.Config
 import com.github.aar0u.quickhub.service.HttpService
@@ -19,13 +18,10 @@ object HttpRunner {
 
     private var httpService: HttpService? = null
     private var serverCoroutine: Job? = null
-    private val serverScope = CoroutineScope(
-        Dispatchers.IO +
-                SupervisorJob() +
-                CoroutineExceptionHandler { _, exception ->
-                    Log.e("ServerScope", "Coroutine error", exception)
-                }
-    )
+    private val serverScope =
+        CoroutineScope(Dispatchers.IO + SupervisorJob() + CoroutineExceptionHandler { _, exception ->
+            Log.e("ServerScope", "Coroutine error $exception")
+        })
 
     fun startServer(config: Config, listener: (File) -> Unit) {
         serverCoroutine?.cancel()

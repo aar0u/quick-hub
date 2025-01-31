@@ -8,13 +8,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,6 +37,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,26 +56,25 @@ import com.github.aar0u.quickhub.android.HttpRunner.stopServer
 import com.github.aar0u.quickhub.model.Config
 import java.io.File
 
-private const val tag = "quick-hub"
+private val tag = MainActivity::class.simpleName
 private val versionGreater29 = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q
 private val versionGreater22 = Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1
 private val toggleState = mutableStateOf(false)
 private val sdPath = Environment.getExternalStorageDirectory().absolutePath
 
 class MainActivity : ComponentActivity() {
-    private val logViewModel: LogViewModel by viewModels()
     private lateinit var folderPickerLauncher: ActivityResultLauncher<Uri?>
     private lateinit var permissionSettingLauncher: ActivityResultLauncher<Intent>
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.init(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             Theme1 {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     ComposeMainColumn1(modifier = Modifier.padding(innerPadding),
-                        logList = logViewModel.logList,
                         onUpdateToggleState = { updateToggleState(it) },
                         onReceiveApk = { installApk(file = it) },
                         onOpenFolderPicker = {
@@ -91,8 +89,8 @@ class MainActivity : ComponentActivity() {
         permissionSettingLauncher = initPermissionSettingLauncher()
         permissionLauncher = initPermissionLauncher()
 
-        logViewModel.startLogCapture()
-        toggleState.value = sdPath.equals(sharedPreferences.getString("path", null)) && checkStoragePermissions()
+        toggleState.value =
+            sdPath.equals(sharedPreferences.getString("path", null)) && checkStoragePermissions()
     }
 
     private fun requestStoragePermissions() {
@@ -189,7 +187,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun getSerConfig(): Config? {
-        return sharedPreferences.getString("path", null)?.takeIf { it != sdPath || toggleState.value }
+        return sharedPreferences.getString("path", null)
+            ?.takeIf { it != sdPath || toggleState.value }
             ?.let { Config(it, 3006, overwrite = true) }
     }
 
@@ -201,7 +200,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ComposeMainColumn1(
     modifier: Modifier = Modifier,
-    logList: List<String>,
     onUpdateToggleState: (Boolean) -> Unit = {},
     onReceiveApk: (File) -> Unit = {},
     onOpenFolderPicker: () -> Unit = {},
@@ -257,7 +255,7 @@ fun ComposeMainColumn1(
             }
         }
 
-        AutoScrollingLog(logList)
+        AutoScrollingLog()
     }
 }
 
@@ -282,7 +280,9 @@ private fun handleServerButtonClick(
 }
 
 @Composable
-fun AutoScrollingLog(logList: List<String>) {
+fun AutoScrollingLog() {
+    val logList = Log.logList.collectAsState().value
+
     val listState = rememberLazyListState()
 
     LaunchedEffect(logList.size) {
@@ -318,28 +318,7 @@ fun AutoScrollingLog(logList: List<String>) {
 fun Column1Preview() {
     Theme1 {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            ComposeMainColumn1(
-                modifier = Modifier.padding(innerPadding), logList = """
-        This is a very long text that will demonstrate the scrolling behavior.
-        It should be long enough to go beyond the screen's boundaries.
-        This is a very long text that will demonstrate the scrolling behavior.
-        It should be long enough to go beyond the screen's boundaries.
-        This is a very long text that will demonstrate the scrolling behavior.
-        It should be long enough to go beyond the screen's boundaries.
-        This is a very long text that will demonstrate the scrolling behavior.
-        It should be long enough to go beyond the screen's boundaries.
-        This is a very long text that will demonstrate the scrolling behavior.
-        It should be long enough to go beyond the screen's boundaries.
-        This is a very long text that will demonstrate the scrolling behavior.
-        It should be long enough to go beyond the screen's boundaries.
-        This is a very long text that will demonstrate the scrolling behavior.
-        It should be long enough to go beyond the screen's boundaries.
-        This is a very long text that will demonstrate the scrolling behavior.
-        It should be long enough to go beyond the screen's boundaries.
-        This is a very long text that will demonstrate the scrolling behavior.
-        It should be long enough to go beyond the screen's boundaries.
-    """.lines()
-            )
+            ComposeMainColumn1(modifier = Modifier.padding(innerPadding))
         }
     }
 }

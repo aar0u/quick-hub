@@ -17,6 +17,7 @@ import java.util.Locale
 object Log {
     private const val MAX_LOG = 300
     private lateinit var logFile: File
+    val file: File get() = logFile
 
     private val _logList = MutableStateFlow<List<String>>(emptyList())
     val logList: StateFlow<List<String>> = _logList // expose logList as a StateFlow
@@ -30,7 +31,7 @@ object Log {
         } else if (logFile.length() > 5 * 1024 * 1024) { // clear log when larger than 5MB
             logFile.writeText("Log cleared on ${getCurrentTimestamp()}\n")
         }
-        Log.i(this::class.simpleName, "LogFile: $logFile")
+        i(this::class.simpleName, "LogFile: $logFile")
     }
 
     private fun getCurrentTimestamp(): String {

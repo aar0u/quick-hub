@@ -45,8 +45,7 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
                     ApiResponse(
                         status = "failed",
                         message = "Error listing files",
-                        data =
-                        mapOf(
+                        data = mapOf(
                             "folder" to FileUtils.trimFromBeginning(fullPath.absolutePath, config.workingDir),
                             "files" to fileInfos,
                         ),
@@ -55,18 +54,15 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
             )
         }
 
-        fullPath.listFiles()
-            ?.filter { !it.name.startsWith(".") }
-            ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() })
-            ?.forEach { file ->
+        fullPath.listFiles()?.filter { !it.name.startsWith(".") }
+            ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() })?.forEach { file ->
                 fileInfos.add(
                     FileInfo(
                         name = file.name,
                         path = FileUtils.trimFromBeginning(file.absolutePath, config.workingDir),
                         type = if (file.isDirectory) "directory" else "file",
                         size = if (file.isDirectory) null else file.length(),
-                        uploadTime =
-                        config.dateTimeFormatter?.format(
+                        uploadTime = config.dateTimeFormatter?.format(
                             LocalDateTime.ofInstant(
                                 java.time.Instant.ofEpochMilli(file.lastModified()),
                                 java.time.ZoneId.systemDefault(),
@@ -76,16 +72,14 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
                 )
             }
 
-        val response =
-            ApiResponse(
-                status = "success",
-                message = "Files listed successfully",
-                data =
-                mapOf(
-                    "folder" to FileUtils.trimFromBeginning(fullPath.absolutePath, config.workingDir),
-                    "files" to fileInfos,
-                ),
-            )
+        val response = ApiResponse(
+            status = "success",
+            message = "Files listed successfully",
+            data = mapOf(
+                "folder" to FileUtils.trimFromBeginning(fullPath.absolutePath, config.workingDir),
+                "files" to fileInfos,
+            ),
+        )
 
         return newFixedLengthResponse(
             NanoHTTPD.Response.Status.OK,
@@ -146,7 +140,7 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
 
     fun handleFileAdd(
         session: NanoHTTPD.IHTTPSession,
-        listener: HttpService.OnFileReceivedListener? = null,
+        listener: HttpService.CallBackListener? = null,
     ): NanoHTTPD.Response {
         val metadata = session.headers["x-file-metadata"]?.let { metadataStr ->
             runCatching {

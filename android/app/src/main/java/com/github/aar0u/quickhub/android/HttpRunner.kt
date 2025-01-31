@@ -23,7 +23,7 @@ object HttpRunner {
             Log.e("ServerScope", "Coroutine error $exception")
         })
 
-    fun startServer(config: Config, listener: (File) -> Unit) {
+    fun startServer(config: Config, listener: HttpService.CallBackListener) {
         serverCoroutine?.cancel()
         serverCoroutine = serverScope.launch {
             httpService = HttpService(config, listener)

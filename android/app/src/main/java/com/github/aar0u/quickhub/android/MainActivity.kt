@@ -54,7 +54,9 @@ import com.github.aar0u.quickhub.android.HttpRunner.isServerRunning
 import com.github.aar0u.quickhub.android.HttpRunner.startServer
 import com.github.aar0u.quickhub.android.HttpRunner.stopServer
 import com.github.aar0u.quickhub.model.Config
+import com.github.aar0u.quickhub.service.HttpService
 import java.io.File
+import java.io.InputStream
 
 private val tag = MainActivity::class.simpleName
 private val versionGreater29 = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q
@@ -69,6 +71,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.init(this)
+
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -85,12 +88,12 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        toggleState.value =
+            sdPath.equals(sharedPreferences.getString("path", null)) && checkStoragePermissions()
+
         folderPickerLauncher = initFolderPickerLauncher()
         permissionSettingLauncher = initPermissionSettingLauncher()
         permissionLauncher = initPermissionLauncher()
-
-        toggleState.value =
-            sdPath.equals(sharedPreferences.getString("path", null)) && checkStoragePermissions()
     }
 
     private fun requestStoragePermissions() {
@@ -271,7 +274,15 @@ private fun handleServerButtonClick(
     } else {
         Log.i(tag, "Starting HTTP server")
         onGetSerConfig()?.let { serverConfig ->
-            startServer(serverConfig) { file -> onReceiveApk(file) }
+            startServer(serverConfig, object : HttpService.CallBackListener {
+                override fun onContentRequested(path: String): InputStream {
+                    return Log.file.also {
+                        Log.i(tag, "Retrieve log file via dummy url $path")
+                    }.inputStream()
+                }
+
+                override fun onFileReceived(file: File) = onReceiveApk(file)
+            })
         } ?: run {
             Log.e(tag, "An error occurred, please check permission")
             isBusy.value = false

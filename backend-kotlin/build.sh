@@ -1,2 +1,2 @@
 # /bin/sh
-./gradlew spotlessApply clean shadowJar lib publishToMavenLocal
+./gradlew spotlessApply shadowJar lib publishToMavenLocal

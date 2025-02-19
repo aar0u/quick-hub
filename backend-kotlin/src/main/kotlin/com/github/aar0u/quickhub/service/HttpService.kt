@@ -6,15 +6,31 @@ import com.github.aar0u.quickhub.model.Config
 import com.github.aar0u.quickhub.util.NetworkUtils
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import java.lang.Thread.sleep
+import java.net.SocketException
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.security.KeyStore
+import javax.net.ssl.KeyManagerFactory
+import javax.net.ssl.SSLContext
 
 class HttpService(private val config: Config, private val listener: CallBackListener? = null) :
     NanoHTTPD(config.host, config.port), Loggable {
     private val textController = TextController()
     private val fileController = FileController(config)
+
+    private val useHttps by lazy {
+        val keyStore = "server.p12"
+        val classLoader = this::class.java.classLoader ?: ClassLoader.getSystemClassLoader()
+        (classLoader.getResource(keyStore) != null).also {
+            if (!it) {
+                log.warn("HTTPS disabled: server.p12 not found in resources")
+            }
+        }
+    }
+    private val httpsPort = 443
 
     interface CallBackListener {
         fun onFileReceived(file: File)
@@ -38,10 +54,27 @@ class HttpService(private val config: Config, private val listener: CallBackList
     override fun start() {
         try {
             super.start()
+
+            if (useHttps) {
+                val httpsServer = object : NanoHTTPD(config.host, httpsPort) {
+                    override fun serve(session: IHTTPSession): Response {
+                        return this@HttpService.serve(session)
+                    }
+                }
+
+                val sslContext = createSSLContext()
+                httpsServer.makeSecure(sslContext.serverSocketFactory, null)
+                httpsServer.start()
+                log.info("HTTPS server started on ${config.host}:$httpsPort")
+            }
+
             log.info("Server started on ${config.host}:${config.port} from ${config.workingDir}")
             NetworkUtils.getIpAddresses().forEach { (name, addresses) ->
                 addresses.forEach { address ->
                     log.info("$name: http://$address:${config.port}")
+                    if (useHttps) {
+                        log.info("$name: https://$address:$httpsPort")
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -75,6 +108,9 @@ class HttpService(private val config: Config, private val listener: CallBackList
                 } else {
                     serveStaticFile(session.uri, listener)
                 }
+        } catch (e: SocketException) {
+            log.warn("Client disconnected: ${e.message}")
+            newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "")
         } catch (e: Exception) {
             log.error("Error handling request: ${e.message}", e)
             newFixedLengthResponse(
@@ -109,5 +145,27 @@ class HttpService(private val config: Config, private val listener: CallBackList
             inputStream,
             inputStream.available().toLong(),
         )
+    }
+
+    private fun createSSLContext(): SSLContext {
+        val keyStore = "server.p12"
+        val pwd = "changeit"
+        return SSLContext.getInstance("TLSv1.2").apply {
+            init(
+                KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply {
+                    init(
+                        KeyStore.getInstance("PKCS12").apply {
+                            val classLoader = this::class.java.classLoader ?: ClassLoader.getSystemClassLoader()
+                            classLoader.getResourceAsStream(keyStore)?.use {
+                                load(it, pwd.toCharArray())
+                            } ?: throw IOException("Cannot find server.p12 in resources")
+                        },
+                        pwd.toCharArray(),
+                    )
+                }.keyManagers,
+                null,
+                null,
+            )
+        }
     }
 }

@@ -15,6 +15,7 @@ class HttpService(private val config: Config, private val listener: CallBackList
     NanoHTTPD(config.host, config.port), Loggable {
     private val textController = TextController()
     private val fileController = FileController(config)
+    private lateinit var httpsService: HttpsService
 
     interface CallBackListener {
         fun onFileReceived(file: File)
@@ -39,9 +40,17 @@ class HttpService(private val config: Config, private val listener: CallBackList
         try {
             super.start()
             log.info("Server started on ${config.host}:${config.port} from ${config.workingDir}")
+
+            if (config.useHttps) {
+                httpsService = HttpsService(config, this).start()
+            }
+
             NetworkUtils.getIpAddresses().forEach { (name, addresses) ->
                 addresses.forEach { address ->
                     log.info("$name: http://$address:${config.port}")
+                    if (::httpsService.isInitialized && httpsService.isRunning()) {
+                        log.info("$name: https://$address:${config.httpsPort}")
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -56,6 +65,9 @@ class HttpService(private val config: Config, private val listener: CallBackList
             sleep(100)
         }
         log.info("Server stopped on port ${config.port}")
+        if (::httpsService.isInitialized) {
+            httpsService.stop()
+        }
     }
 
     override fun serve(session: IHTTPSession): Response {
@@ -89,12 +101,12 @@ class HttpService(private val config: Config, private val listener: CallBackList
 
     private fun serveStaticFile(path: String, listener: CallBackListener?): Response {
         // Try to load from classpath (inside JAR) first
-        val inputStream =
-            javaClass.getResourceAsStream("${config.staticDir}$path") ?: File("../static$path").takeIf { it.exists() }
-                ?.inputStream() ?: listener?.onContentRequested(path)
+        val inputStream = javaClass.getResourceAsStream("/${config.staticDir}$path")
+            ?: File("../${config.staticDir}$path").takeIf { it.exists() }?.inputStream()
+            ?: listener?.onContentRequested(path)
 
         if (inputStream == null) {
-            log.info("Not found: {} in {}", path, javaClass.getResource("/static"))
+            log.info("Not static file: {}", path)
             return newFixedLengthResponse(
                 Response.Status.NOT_FOUND,
                 MIME_PLAINTEXT,

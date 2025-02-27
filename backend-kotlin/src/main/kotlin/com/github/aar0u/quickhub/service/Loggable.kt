@@ -11,11 +11,11 @@ interface Loggable {
         get() = LoggerFactory.getLogger(this::class.simpleName)
 
     companion object {
-        val ignoredMessages = arrayOf("Broken pipe", "Connection or outbound has closed")
+        val ignoredMessages = arrayOf("Broken pipe", "Connection or outbound has closed", "Connection reset by peer")
     }
 
     fun shouldIgnoreMessage(message: String?): Boolean {
-        return message?.let { ignoredMessages.any { ignored -> message.contains(ignored) } } ?: true
+        return message?.let { ignoredMessages.any { ignored -> message.contains(ignored, true) } } ?: true
     }
 
     fun configureNanoHTTPDLogger() {
@@ -26,7 +26,9 @@ interface Loggable {
         logger.addHandler(object : ConsoleHandler() {
             init {
                 filter = Filter { record ->
-                    !shouldIgnoreMessage(record.thrown.message)
+                    record.thrown?.message?.let {
+                        !shouldIgnoreMessage(it)
+                    } ?: true
                 }
             }
         })

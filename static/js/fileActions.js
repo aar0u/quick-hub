@@ -25,7 +25,7 @@ function pushButton(td, file) {
     }, 500);
 
     const key = 'pushUrl';
-    const defaultValue = 'http://192.168.31.204:9978/action';
+    const defaultValue = 'http://192.168.31.174:9978/action';
     let pushUrl = localStorage.getItem(key);
     if (!pushUrl) {
       localStorage.setItem(key, defaultValue);
@@ -40,7 +40,7 @@ function pushButton(td, file) {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({ do: 'push', url }).toString(),
+      body: new URLSearchParams({ do: 'push', url: encodeURIComponent(url) }).toString(),
       signal: controller.signal,
     }).then(response => {
       clearTimeout(timeoutId);

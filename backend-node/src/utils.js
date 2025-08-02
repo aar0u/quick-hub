@@ -17,7 +17,8 @@ function trimFromBeginning(str, tar) {
   if (str.startsWith(tar)) {
     str = str.substring(tar.length);
   }
-  if (str.startsWith('/')) {
+  // Remove leading slash or backslash for Windows compatibility
+  while (str.startsWith('/') || str.startsWith('\\')) {
     str = str.substring(1);
   }
   return str;

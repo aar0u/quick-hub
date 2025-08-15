@@ -102,11 +102,8 @@ const uploadHandler = (req, res) => {
       uploadedBytes += data.length;
       const currentProgress = Math.floor((uploadedBytes / fileSize) * 100);
 
-      // Only log if progress increased by 5% or more
-      if (currentProgress >= lastReportedProgress + 5) {
-        console.log(`${fileName}: ${currentProgress}%`);
-        lastReportedProgress = currentProgress;
-      }
+      process.stdout.write(`\r${fileName}: ${currentProgress}%   `); // pad with spaces to clear previous
+      lastReportedProgress = currentProgress;
     });
 
     file.pipe(writeStream);
@@ -115,6 +112,8 @@ const uploadHandler = (req, res) => {
       const stats = fs.statSync(filePath);
       const fileSizeFormatted = utils.formatFileSize(stats.size);
 
+      // Always print 100% at the end
+      process.stdout.write(`\r${fileName}: 100%   \n`);
       console.log('Upload completed:');
       console.group();
       console.log(

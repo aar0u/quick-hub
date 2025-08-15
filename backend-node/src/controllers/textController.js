@@ -12,7 +12,9 @@ function loadHistory() {
 loadHistory();
 
 const saveText = (text) => {
-  history.push({ timestamp: Date.now(), text });
+  if (history.length === 0 || history[history.length - 1].text !== text) {
+    history.push({ timestamp: Date.now(), text });
+  }
 };
 
 const saveTextHandler = (req, res) => {

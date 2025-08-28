@@ -1,6 +1,4 @@
 package com.github.aar0u.quickhub.service
-
-import fi.iki.elonen.NanoHTTPD
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.util.logging.ConsoleHandler
@@ -18,19 +16,5 @@ interface Loggable {
         return message?.let { ignoredMessages.any { ignored -> message.contains(ignored, true) } } ?: true
     }
 
-    fun configureNanoHTTPDLogger() {
-        val logger = java.util.logging.Logger.getLogger(NanoHTTPD::class.java.name)
-        // disable parent handlers
-        logger.useParentHandlers = false
-        // add a custom handler
-        logger.addHandler(object : ConsoleHandler() {
-            init {
-                filter = Filter { record ->
-                    record.thrown?.message?.let {
-                        !shouldIgnoreMessage(it)
-                    } ?: true
-                }
-            }
-        })
-    }
+    // Javalin migration: logger configuration not required
 }

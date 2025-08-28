@@ -11,8 +11,6 @@ fun main(args: Array<String>) {
     } ?: "/Volumes/RAMDisk"
 
     val config = Config(workingDir = workingDir, useHttps = true)
-    HttpService(config).start()
-
-    // Keep the main thread alive
-    Thread.currentThread().join()
+    val app = com.github.aar0u.quickhub.service.JavalinService(config).start()
+    // Javalin blocks main thread by default
 }

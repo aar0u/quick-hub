@@ -3,14 +3,12 @@ package com.github.aar0u.quickhub.controller
 import com.github.aar0u.quickhub.model.ApiResponse
 import com.github.aar0u.quickhub.model.Config
 import com.github.aar0u.quickhub.model.FileInfo
-import com.github.aar0u.quickhub.service.HttpService
 import com.github.aar0u.quickhub.service.Loggable
 import com.github.aar0u.quickhub.util.FileUtils
-import com.google.gson.reflect.TypeToken
-import fi.iki.elonen.NanoHTTPD
-import fi.iki.elonen.NanoHTTPD.getMimeTypeForFile
-import fi.iki.elonen.NanoHTTPD.newChunkedResponse
-import fi.iki.elonen.NanoHTTPD.newFixedLengthResponse
+import io.javalin.http.Context
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.github.aar0u.quickhub.service.CallBackListener
 import java.io.File
 import java.io.RandomAccessFile
 import java.net.URLDecoder
@@ -19,10 +17,15 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDateTime
 
-class FileController(private val config: Config) : Loggable, ControllerBase() {
-    fun handleFileList(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
-        val jsonObject = parseJsonBody(session)
-        val dirname = jsonObject["dirname"] ?: ""
+
+class FileController(private val config: Config, private val listener: CallBackListener? = null) : Loggable,
+    ControllerBase() {
+    private val objectMapper = jacksonObjectMapper()
+
+    fun handleFileList(ctx: Context) {
+        val body = ctx.body()
+        val dirname =
+            if (body.isNotBlank()) objectMapper.readValue<Map<String, Any>>(body)["dirname"] as? String ?: "" else ""
         val fullPath = File(Paths.get(config.workingDir, dirname).normalize().toString())
         log.info("Listing {}", fullPath)
 
@@ -38,20 +41,17 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         }
 
         if (!fullPath.exists()) {
-            return newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK,
-                MIME_JSON,
-                gson.toJson(
-                    ApiResponse(
-                        status = "failed",
-                        message = "Error listing files",
-                        data = mapOf(
-                            "folder" to FileUtils.trimFromBeginning(fullPath.absolutePath, config.workingDir),
-                            "files" to fileInfos,
-                        ),
+            ctx.status(200).json(
+                ApiResponse(
+                    status = "failed",
+                    message = "Error listing files",
+                    data = mapOf(
+                        "folder" to FileUtils.trimFromBeginning(fullPath.absolutePath, config.workingDir),
+                        "files" to fileInfos,
                     ),
-                ),
+                )
             )
+            return
         }
 
         fullPath.listFiles()?.filter { !it.name.startsWith(".") }
@@ -81,29 +81,24 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
             ),
         )
 
-        return newFixedLengthResponse(
-            NanoHTTPD.Response.Status.OK,
-            MIME_JSON,
-            gson.toJson(response),
-        )
+        ctx.status(200).json(response)
+        return
     }
 
-    fun handleFileCheck(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
-        val jsonObject = parseJsonBody(session)
-        val filename = jsonObject["filename"] ?: ""
-        val dirname = jsonObject["dirname"] ?: ""
+    fun handleFileCheck(ctx: Context) {
+        val body = ctx.body()
+        val jsonObject = if (body.isNotBlank()) objectMapper.readValue<Map<String, Any>>(body) else emptyMap()
+        val filename = jsonObject["filename"] as? String ?: ""
+        val dirname = jsonObject["dirname"] as? String ?: ""
 
         if (filename.isBlank()) {
-            return newFixedLengthResponse(
-                NanoHTTPD.Response.Status.BAD_REQUEST,
-                MIME_JSON,
-                gson.toJson(
-                    ApiResponse(
-                        status = "failed",
-                        message = "No filename provided",
-                    ),
-                ),
+            ctx.status(400).json(
+                ApiResponse(
+                    status = "failed",
+                    message = "No filename provided",
+                )
             )
+            return
         }
 
         val filePath = Paths.get(config.workingDir, dirname, filename).toString()
@@ -114,38 +109,31 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
                 $filePath
                 """.trimIndent(),
             )
-            return newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK,
-                MIME_JSON,
-                gson.toJson(
-                    ApiResponse(
-                        status = "failed",
-                        message = "File already exists",
-                    ),
-                ),
+            ctx.status(200).json(
+                ApiResponse(
+                    status = "failed",
+                    message = "File already exists",
+                )
             )
+            return
         }
 
-        return newFixedLengthResponse(
-            NanoHTTPD.Response.Status.OK,
-            MIME_JSON,
-            gson.toJson(
-                ApiResponse(
-                    status = "success",
-                    message = "File can be uploaded",
-                ),
-            ),
+        ctx.status(200).json(
+            ApiResponse(
+                status = "success",
+                message = "File can be uploaded",
+            )
         )
+        return
     }
 
-    fun handleFileAdd(
-        session: NanoHTTPD.IHTTPSession,
-        listener: HttpService.CallBackListener? = null,
-    ): NanoHTTPD.Response {
-        val metadata = session.headers["x-file-metadata"]?.let { metadataStr ->
+
+    fun handleFileAdd(ctx: Context) {
+        val metadataStr = ctx.header("x-file-metadata")
+        val metadata = metadataStr?.let {
             runCatching {
-                val decode = URLDecoder.decode(metadataStr, StandardCharsets.UTF_8.name())
-                gson.fromJson<Map<String, String>>(decode, object : TypeToken<Map<String, String>>() {}.type)
+                val decode = URLDecoder.decode(it, StandardCharsets.UTF_8.name())
+                objectMapper.readValue<Map<String, String>>(decode)
             }.getOrNull()
         } ?: run {
             log.warn("x-file-metadata is null or failed to decode")
@@ -153,25 +141,29 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         }
 
         val uploadDir = Paths.get(config.workingDir, metadata["dirname"] ?: "").toString()
-        File(uploadDir).mkdirs() // Ensure upload directory exists
-
-        // Get filename from metadata or fallback to temp file name
-        val filename = metadata["filename"]
+        File(uploadDir).mkdirs()
+        val filename = metadata["filename"] ?: ctx.uploadedFiles().firstOrNull()?.filename() ?: "uploaded"
         val targetFile = File(Paths.get(uploadDir, filename).toString())
 
         log.info("Upload started: ${targetFile.absolutePath}")
 
-        val map = mutableMapOf<String, String>()
-        session.parseBody(map)
-
-        val tempFilePath = map["files"] ?: ""
-        log.info("Temp file: {}", tempFilePath)
-        val tempFile = File(tempFilePath)
+        val uploaded = ctx.uploadedFiles().firstOrNull()
+        if (uploaded == null) {
+            ctx.status(400).json(
+                ApiResponse(
+                    status = "failed",
+                    message = "No file uploaded",
+                )
+            )
+            return
+        }
 
         try {
-            targetFile.parentFile?.mkdirs()
-            tempFile.copyTo(targetFile, config.overwrite)
-
+            uploaded.content().use { input ->
+                targetFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
             val stats = targetFile.length()
             val fileSizeFormatted = FileUtils.formatFileSize(stats)
             log.info(
@@ -179,85 +171,73 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
                 Upload completed:
                 - File: ${targetFile.absolutePath}
                 - Size: $fileSizeFormatted (${String.format("%,d", stats)} bytes)
-                - MIME type: ${getMimeTypeForFile(filename)}
-                """.trimIndent(),
+                - MIME type: ${Files.probeContentType(targetFile.toPath()) ?: MIME_STREAM}
+            """.trimIndent()
             )
-
             listener?.onFileReceived(targetFile)
         } catch (e: Exception) {
             log.error("Failed to handle file", e)
-            return newFixedLengthResponse(
-                NanoHTTPD.Response.Status.INTERNAL_ERROR,
-                MIME_JSON,
-                gson.toJson(
-                    ApiResponse(
-                        status = "failed",
-                        message = "Failed to handle file: ${e.message}",
-                    ),
-                ),
+            ctx.status(500).json(
+                ApiResponse(
+                    status = "failed",
+                    message = "Failed to handle file: ${e.message}",
+                )
             )
+            return
         }
 
-        return newFixedLengthResponse(
-            NanoHTTPD.Response.Status.OK,
-            MIME_JSON,
-            gson.toJson(
-                ApiResponse(
-                    status = "success",
-                    message = "Files uploaded",
-                ),
-            ),
+        ctx.status(200).json(
+            ApiResponse(
+                status = "success",
+                message = "Files uploaded",
+            )
         )
+        return
     }
 
-    fun handleFileRequest(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
-        val filename = session.uri.removePrefix("/file/")
+    fun handleFileRequest(ctx: Context) {
+        val rawFilename = ctx.path().removePrefix("/file/")
+        val filename = URLDecoder.decode(rawFilename, StandardCharsets.UTF_8.name())
+
         val file = File(Paths.get(config.workingDir, filename).toString())
-        val rangeHeader = session.headers["range"]
+        val rangeHeader = ctx.header("Range")
         log.info("Get file: ${file.name} ${rangeHeader?.let { "($it)" } ?: ""}")
 
         if (!file.exists()) {
-            return newFixedLengthResponse(
-                NanoHTTPD.Response.Status.NOT_FOUND,
-                NanoHTTPD.MIME_PLAINTEXT,
-                "File not found",
-            )
+            ctx.status(404).result("File not found")
+            return
         }
 
         val mimeType = Files.probeContentType(file.toPath()) ?: MIME_STREAM
-        val response = newChunkedResponse(NanoHTTPD.Response.Status.OK, mimeType, null)
+        ctx.contentType(mimeType)
 
         if (rangeHeader == null) {
-            response.data = file.inputStream()
-            response.addHeader(HEADER_CONTENT_LENGTH, file.length().toString())
+            ctx.header(HEADER_CONTENT_LENGTH, file.length().toString())
+            ctx.result(file.inputStream())
         } else {
             val ranges = rangeHeader.substringAfter("bytes=").split("-")
             val start = ranges[0].toLongOrNull() ?: 0
             val end = ranges.getOrNull(1)?.toLongOrNull()?.coerceAtMost(file.length() - 1) ?: (file.length() - 1)
-
-            response.status = NanoHTTPD.Response.Status.PARTIAL_CONTENT
-            response.addHeader("Accept-Ranges", "bytes")
             val chunkSize = (end - start) + 1
+            ctx.status(206)
+            ctx.header("Accept-Ranges", "bytes")
+            ctx.header(HEADER_CONTENT_LENGTH, chunkSize.toString())
+            ctx.header(HEADER_CONTENT_RANGE, "bytes $start-$end/${file.length()}")
+            val maxChunkSize = 2 * 1024 * 1024L
             if (end == file.length() - 1) {
                 val fis = file.inputStream()
                 fis.channel.position(start)
-                response.data = fis
-                response.addHeader(HEADER_CONTENT_LENGTH, chunkSize.toString())
-                response.addHeader(HEADER_CONTENT_RANGE, "bytes $start-$end/${file.length()}")
+                ctx.result(fis)
             } else if (end > start) {
-                val maxChunkSize = 2 * 1024 * 1024L // Limit buffer to 2MB chunks
                 val actualChunk = chunkSize.coerceAtMost(maxChunkSize)
                 val buffer = ByteArray(actualChunk.toInt())
                 RandomAccessFile(file, "r").use { raf ->
                     raf.seek(start)
                     raf.readFully(buffer)
                 }
-                response.data = buffer.inputStream()
-                response.addHeader(HEADER_CONTENT_LENGTH, actualChunk.toString())
-                response.addHeader(HEADER_CONTENT_RANGE, "bytes $start-${start + actualChunk - 1}/${file.length()}")
+                ctx.result(buffer.inputStream())
             }
         }
-
-        return response
+        return
     }
 }

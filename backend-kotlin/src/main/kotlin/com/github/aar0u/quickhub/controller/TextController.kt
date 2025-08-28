@@ -2,9 +2,7 @@ package com.github.aar0u.quickhub.controller
 
 import com.github.aar0u.quickhub.model.ApiResponse
 import com.github.aar0u.quickhub.service.Loggable
-import fi.iki.elonen.NanoHTTPD.IHTTPSession
-import fi.iki.elonen.NanoHTTPD.Response
-import fi.iki.elonen.NanoHTTPD.newFixedLengthResponse
+import io.javalin.http.Context
 import java.time.LocalDateTime
 
 class TextController : Loggable, ControllerBase() {
@@ -16,23 +14,20 @@ class TextController : Loggable, ControllerBase() {
             ),
         )
 
-    fun handleTextList(): Response {
+    fun handleTextList(ctx: Context) {
         val response =
             ApiResponse(
                 status = "success",
                 message = "Load successfully",
                 data = history,
             )
-        return newFixedLengthResponse(
-            Response.Status.OK,
-            MIME_JSON,
-            gson.toJson(response),
-        )
+        ctx.status(200).json(response)
+        return
     }
 
-    fun handleTextAdd(session: IHTTPSession): Response {
-        val jsonObject = parseJsonBody(session)
-        val text = jsonObject["text"] ?: ""
+    fun handleTextAdd(ctx: Context) {
+        val jsonObject = ctx.bodyAsClass(Map::class.java)
+        val text = jsonObject["text"] as? String ?: ""
 
         log.info(
             """
@@ -52,10 +47,7 @@ class TextController : Loggable, ControllerBase() {
                 status = "success",
                 message = "Saved successfully",
             )
-        return newFixedLengthResponse(
-            Response.Status.OK,
-            MIME_JSON,
-            gson.toJson(response),
-        )
+        ctx.status(200).json(response)
+        return
     }
 }

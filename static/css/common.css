@@ -1,0 +1,14 @@
+body {
+  margin-top: 24px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.button-container {
+  display: flex;
+  gap: 0.5em;
+}

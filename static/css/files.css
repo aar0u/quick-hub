@@ -44,19 +44,6 @@
   font-size: medium;
 }
 
-.container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.button-container {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.button-container input[type="file"] {
+.container input[type="file"] {
   margin-bottom: 0;
-  width: 30vw;
 }

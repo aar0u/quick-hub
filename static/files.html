@@ -1,39 +1,40 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>File Server</title>
-    <link rel="stylesheet" href="css/pico.min.css" />
-    <link rel="stylesheet" href="css/files.css" />
-  </head>
-  <body>
-    <div class="container">
-      <h1>File Server <a href="pad.html">Temp Pad</a></h1>
-      <div class="button-container">
-        <input type="file" id="fileInput" />
-        <span role="button" id="uploadButton">Upload</span>
-        <span role="button" id="refreshButton">Refresh</span>
-      </div>
-      <div class="message-container">
-        <span id="message"></span>
-      </div>
-      <div class="list-container">
-        <h1>
-          File List <span id="folder"></span>
-        </h1>
-        <table id="fileList">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Size</th>
-              <th>Time</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>File Server</title>
+  <link rel="stylesheet" href="css/pico.min.css" />
+  <link rel="stylesheet" href="css/common.css" />
+  <link rel="stylesheet" href="css/files.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>File Server <a href="pad.html">Temp Pad</a></h1>
+    <input type="file" id="fileInput" />
+    <div class="button-container">
+      <span role="button" id="uploadButton">Upload</span>
+      <span role="button" id="refreshButton">Refresh</span>
     </div>
-    <script type="module" src="js/files.js"></script>
-  </body>
+    <div class="message-container">
+      <span id="message"></span>
+    </div>
+    <div class="list-container">
+      <h1>
+        File List <span id="folder"></span>
+      </h1>
+      <table id="fileList">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <script type="module" src="js/files.js"></script>
+</body>
 </html>

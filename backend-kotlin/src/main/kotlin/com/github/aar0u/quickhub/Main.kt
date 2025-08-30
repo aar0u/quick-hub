@@ -7,7 +7,10 @@ import java.io.File
 fun main(args: Array<String>) {
     val workingDir = args.getOrNull(0)?.let { dir ->
         val file = File(dir)
-        if (file.exists()) file.absolutePath else null
+        if (!file.exists()) {
+            file.mkdirs()
+        }
+        file.absolutePath
     } ?: "/Volumes/RAMDisk"
 
     val config = Config(workingDir = workingDir, useHttps = true)

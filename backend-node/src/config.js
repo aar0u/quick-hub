@@ -5,7 +5,7 @@ import path from 'path';
 
 let workingDir = process.argv[2];
 if (!fs.existsSync(workingDir)) {
-  workingDir = '/Volumes/RAMDisk';
+  fs.mkdirSync(workingDir, { recursive: true });
 }
 
 const port = process.argv[3] || process.env.PORT || 3006;

@@ -5,7 +5,8 @@ object FileUtils {
         path: String,
         prefix: String,
     ): String {
-        return path.removePrefix(prefix).removePrefix("/")
+        val trimmed = path.removePrefix(prefix)
+        return trimmed.removePrefix("/").removePrefix("\\")
     }
 
     fun formatFileSize(size: Long): String {

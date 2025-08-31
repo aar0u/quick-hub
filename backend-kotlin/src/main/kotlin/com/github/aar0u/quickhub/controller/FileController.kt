@@ -155,22 +155,11 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         val uploadDir = Paths.get(config.workingDir, metadata["dirname"] ?: "").toString()
         File(uploadDir).mkdirs() // Ensure upload directory exists
 
-        // Get filename from metadata or fallback to temp file name
         val filename = metadata["filename"]
         val targetFile = File(Paths.get(uploadDir, filename).toString())
 
-        log.info("Upload started: ${targetFile.absolutePath}")
-
-        val map = mutableMapOf<String, String>()
-        session.parseBody(map)
-
-        val tempFilePath = map["files"] ?: ""
-        log.info("Temp file: {}", tempFilePath)
-        val tempFile = File(tempFilePath)
-
         try {
-            targetFile.parentFile?.mkdirs()
-            tempFile.copyTo(targetFile, config.overwrite)
+            saveMultipartFile(session, targetFile)
 
             val stats = targetFile.length()
             val fileSizeFormatted = FileUtils.formatFileSize(stats)
@@ -259,5 +248,86 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         }
 
         return response
+    }
+
+    fun saveMultipartFile(session: NanoHTTPD.IHTTPSession, targetFile: File) {
+        val boundary = session.headers["content-type"]
+            ?.let { Regex("boundary=([^;]+)").find(it)?.groupValues?.get(1)?.trim() }
+            ?: ""
+
+        val contentLength = session.headers["content-length"]?.toLongOrNull() ?: 0L
+        var bytesReadTotal = 0L
+        var fileStarted = false
+
+        val buffer = ByteArray(8192) // 8KB buffer
+        var leftover = ByteArray(0)
+
+        try {
+            targetFile.outputStream().use { fileOutput ->
+                while (bytesReadTotal < contentLength) {
+                    val bytesRead = session.inputStream.read(buffer)
+                    if (bytesRead == -1) break
+                    bytesReadTotal += bytesRead
+
+                    val chunk = if (leftover.isNotEmpty()) {
+                        leftover + buffer.copyOf(bytesRead)
+                    } else {
+                        buffer.copyOf(bytesRead)
+                    }
+
+                    // IMPORTANT: Use ISO_8859_1 for decoding to preserve byte-to-char position alignment.
+                    // Using UTF-8 may break position calculations due to multibyte characters, causing file write errors.
+                    val chunkStr = String(chunk, StandardCharsets.ISO_8859_1)
+
+                    if (fileStarted) {
+                        val boundaryEndRegex = Regex("""\r\n--$boundary(--)?""")
+                        val boundaryEndMatch = boundaryEndRegex.find(chunkStr)
+                        val writeLength = boundaryEndMatch?.range?.first ?: chunkStr.length
+                        fileOutput.write(chunk, 0, writeLength)
+                        if (boundaryEndMatch != null) {
+                            log.info("Detected boundary end, stopping file write loop.")
+                            break
+                        }
+                        leftover = ByteArray(0)
+                        continue
+                    }
+
+                    val metaJson =
+                        Regex("""name="metadata"[\s\S]*?\r\n\r\n([\s\S]*?)\r\n--$boundary""").find(chunkStr)?.groupValues?.get(
+                            1
+                        )
+                            ?.trim()
+                    if (metaJson != null) {
+                        log.info(
+                            "Metadata parsed (unused, header metadata preferred): {}",
+                            metaJson.toByteArray(Charsets.ISO_8859_1).toString(Charsets.UTF_8)
+                        )
+                    }
+
+                    val fileStart =
+                        Regex("""filename="([^"]+)".*?\r\n\r\n""", RegexOption.DOT_MATCHES_ALL).find(chunkStr)
+                    if (fileStart != null) {
+                        val fileContentStart = fileStart.range.last + 1
+                        val fileContentEnd = Regex("""\r\n--$boundary(--)?""").find(
+                            chunkStr,
+                            startIndex = fileContentStart
+                        )?.range?.first ?: chunkStr.length
+                        fileOutput.write(chunk, fileContentStart, fileContentEnd - fileContentStart)
+
+                        log.info("Upload started: ${targetFile.absolutePath}")
+                        fileStarted = true
+                        leftover = if (fileContentEnd < chunkStr.length) chunk.copyOfRange(
+                            fileContentEnd,
+                            chunk.size
+                        ) else ByteArray(0)
+                    } else {
+                        leftover = chunk
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            log.error("Error writing file output: ", e)
+        }
+        return
     }
 }

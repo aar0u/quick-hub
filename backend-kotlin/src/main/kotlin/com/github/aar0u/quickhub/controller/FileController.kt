@@ -294,13 +294,13 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
 
                     val metaJson =
                         Regex("""name="metadata"[\s\S]*?\r\n\r\n([\s\S]*?)\r\n--$boundary""").find(chunkStr)?.groupValues?.get(
-                            1
+                            1,
                         )
                             ?.trim()
                     if (metaJson != null) {
                         log.info(
                             "Metadata parsed (unused, header metadata preferred): {}",
-                            metaJson.toByteArray(Charsets.ISO_8859_1).toString(Charsets.UTF_8)
+                            metaJson.toByteArray(Charsets.ISO_8859_1).toString(Charsets.UTF_8),
                         )
                     }
 
@@ -310,16 +310,20 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
                         val fileContentStart = fileStart.range.last + 1
                         val fileContentEnd = Regex("""\r\n--$boundary(--)?""").find(
                             chunkStr,
-                            startIndex = fileContentStart
+                            startIndex = fileContentStart,
                         )?.range?.first ?: chunkStr.length
                         fileOutput.write(chunk, fileContentStart, fileContentEnd - fileContentStart)
 
                         log.info("Upload started: ${targetFile.absolutePath}")
                         fileStarted = true
-                        leftover = if (fileContentEnd < chunkStr.length) chunk.copyOfRange(
-                            fileContentEnd,
-                            chunk.size
-                        ) else ByteArray(0)
+                        leftover = if (fileContentEnd < chunkStr.length) {
+                            chunk.copyOfRange(
+                                fileContentEnd,
+                                chunk.size,
+                            )
+                        } else {
+                            ByteArray(0)
+                        }
                     } else {
                         leftover = chunk
                     }

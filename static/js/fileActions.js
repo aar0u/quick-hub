@@ -40,7 +40,7 @@ function pushButton(td, file) {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({ do: 'push', url: encodeURIComponent(url) }).toString(),
+      body: new URLSearchParams({ do: 'push', url: url }).toString(),
       signal: controller.signal,
     }).then(response => {
       clearTimeout(timeoutId);

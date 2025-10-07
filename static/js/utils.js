@@ -22,9 +22,9 @@ function formatFileSize(bytes) {
 
 function escapeFilename(filename) {
   return filename
+    .replace(/%/g, '%25')
     .replace(/ /g, '%20')
     .replace(/#/g, '%23')
-    .replace(/%/g, '%25')
     .replace(/&/g, '%26')
     .replace(/\$/g, '%24')
     .replace(/\+/g, '%2B')

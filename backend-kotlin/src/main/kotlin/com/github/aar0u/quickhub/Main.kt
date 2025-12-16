@@ -13,7 +13,7 @@ fun main(args: Array<String>) {
         file.absolutePath
     } ?: "/Volumes/RAMDisk"
 
-    val config = Config(workingDir = workingDir, useHttps = true)
+    val config = Config(workingDir = workingDir.trimEnd('.', '/', '\\'), useHttps = true)
     HttpService(config).start()
 
     // Keep the main thread alive

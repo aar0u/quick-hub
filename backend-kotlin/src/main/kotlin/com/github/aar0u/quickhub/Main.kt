@@ -11,9 +11,17 @@ fun main(args: Array<String>) {
             file.mkdirs()
         }
         file.absolutePath
-    } ?: "/Volumes/RAMDisk"
+    } ?: run {
+        // Set default directory based on operating system
+        val osName = System.getProperty("os.name").lowercase()
+        when {
+            osName.contains("mac") || osName.contains("darwin") -> "/Volumes/RAMDisk"
+            osName.contains("windows") -> "Z:\\"
+            else -> System.getProperty("user.dir")
+        }
+    }
 
-    val config = Config(workingDir = workingDir, useHttps = true)
+    val config = Config(workingDir = workingDir.trimEnd('.', '/', '\\'), useHttps = true)
     HttpService(config).start()
 
     // Keep the main thread alive

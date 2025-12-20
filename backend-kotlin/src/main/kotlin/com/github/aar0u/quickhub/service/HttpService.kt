@@ -5,6 +5,7 @@ import com.github.aar0u.quickhub.controller.TextController
 import com.github.aar0u.quickhub.model.Config
 import com.github.aar0u.quickhub.util.NetworkUtils
 import fi.iki.elonen.NanoHTTPD
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.InputStream
 import java.lang.Thread.sleep
@@ -12,7 +13,8 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 class HttpService(private val config: Config, private val listener: CallBackListener? = null) :
-    NanoHTTPD(config.host, config.port), Loggable {
+    NanoHTTPD(config.host, config.port) {
+    private val log = LoggerFactory.getLogger(HttpService::class.java)
     private val textController = TextController()
     private val fileController = FileController(config)
     private lateinit var httpsService: HttpsService
@@ -32,7 +34,6 @@ class HttpService(private val config: Config, private val listener: CallBackList
     )
 
     init {
-        configureNanoHTTPDLogger()
         File(config.workingDir).mkdirs()
     }
 

@@ -1625,7 +1625,26 @@ public abstract class NanoHTTPD {
                 outputStream.flush();
                 safeClose(this.data);
             } catch (IOException ioe) {
-                NanoHTTPD.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
+                String[] safeToIgnore = {
+                    "Broken pipe",
+                    "Connection or outbound has closed",
+                    "Connection reset by peer",
+                    "An established connection was aborted"
+                };
+                boolean ignored = false;
+                String msg = ioe.getMessage();
+                if (msg != null) {
+                    for (String s : safeToIgnore) {
+                        if (msg.contains(s)) {
+                            ignored = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!ignored) {
+                    NanoHTTPD.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
+                }
             }
         }
 

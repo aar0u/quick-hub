@@ -2,6 +2,7 @@ package com.github.aar0u.quickhub
 
 import com.github.aar0u.quickhub.model.Config
 import com.github.aar0u.quickhub.service.HttpService
+import com.github.aar0u.quickhub.util.FileUtils
 import java.io.File
 
 fun main(args: Array<String>) {
@@ -12,16 +13,12 @@ fun main(args: Array<String>) {
         }
         file.absolutePath
     } ?: run {
-        // Set default directory based on operating system
-        val osName = System.getProperty("os.name").lowercase()
-        when {
-            osName.contains("mac") || osName.contains("darwin") -> "/Volumes/RAMDisk"
-            osName.contains("windows") -> "Z:\\"
-            else -> System.getProperty("user.dir")
-        }
+        System.getProperty("user.dir")
     }
 
-    val config = Config(workingDir = workingDir.trimEnd('.', '/', '\\'), useHttps = true)
+    // Normalize the working directory path to ensure consistent format
+    val normalizedWorkingDir = FileUtils.normalizePath(workingDir)
+    val config = Config(workingDir = normalizedWorkingDir, useHttps = true)
     HttpService(config).start()
 
     // Keep the main thread alive

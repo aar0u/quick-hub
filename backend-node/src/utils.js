@@ -13,7 +13,23 @@ function formatFileSize(bytes) {
   return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+function normalizePath(p) {
+  // Convert all backslashes to forward slashes for consistency
+  p = p.replace(/\\/g, '/');
+  
+  // Remove any trailing slash
+  if (p.endsWith('/') && p !== '/') {
+    p = p.slice(0, -1);
+  }
+  
+  return p;
+}
+
 function trimFromBeginning(str, tar) {
+  // Normalize both paths to ensure consistent separators
+  str = normalizePath(str);
+  tar = normalizePath(tar);
+  
   if (str.startsWith(tar)) {
     str = str.substring(tar.length);
   }
@@ -37,4 +53,5 @@ export default {
   formatFileSize,
   trimFromBeginning,
   jsonResponse,
+  normalizePath,
 };

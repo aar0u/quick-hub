@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Gallery</title>
+    <link rel="stylesheet" href="css/gallery.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Image Gallery</h1>
+        <div id="gallery" class="gallery">
+            <p class="loading">Loading images...</p>
+        </div>
+    </div>
+
+    <!-- Modal for full-size image viewing -->
+    <div id="modal" class="modal">
+        <span class="close">&times;</span>
+        <button class="nav-button prev" id="prevBtn">&#10094;</button>
+        <img class="modal-content" id="modalImg">
+        <button class="nav-button next" id="nextBtn">&#10095;</button>
+    </div>
+
+    <script src="js/gallery.js"></script>
+</body>
+</html>

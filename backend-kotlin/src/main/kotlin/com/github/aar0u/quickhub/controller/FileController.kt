@@ -27,7 +27,7 @@ class FileController(private val config: Config) : Loggable, ControllerBase() {
         log.info("Listing {}", fullPath)
 
         val fileInfos = mutableListOf<FileInfo>()
-        if (fullPath.absolutePath.trimEnd('/', '\\') != config.workingDir) {
+        if (FileUtils.normalizePath(fullPath.absolutePath) != config.workingDir) {
             fileInfos.add(
                 FileInfo(
                     name = "..",

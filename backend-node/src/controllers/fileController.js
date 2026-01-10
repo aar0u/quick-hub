@@ -11,7 +11,7 @@ const listHandler = (req, res) => {
   const fullPath = path.join(workingDir, dirname);
 
   const fileInfos = [];
-  if (fullPath != workingDir) {
+  if (utils.normalizePath(fullPath) != workingDir) {
     fileInfos.unshift({
       name: '..',
       path: `${utils.trimFromBeginning(fullPath, workingDir)}/..`,
@@ -170,7 +170,12 @@ const getHandler = (req, res) => {
 
       fs.createReadStream(filePath, { start, end }).pipe(res);
     } else {
-      res.download(filePath, filename);
+      // Set proper headers to display the file in browser instead of downloading
+      res.setHeader('Content-Type', res.type(encodeURIComponent(filename)));
+      res.setHeader('Content-Length', stat.size);
+      res.setHeader('Accept-Ranges', 'bytes');
+      
+      fs.createReadStream(filePath).pipe(res);
     }
   });
 };

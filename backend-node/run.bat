@@ -1,2 +1,0 @@
-set HTTPS_PORT=443
-npm start Z:\DOWNLOADS

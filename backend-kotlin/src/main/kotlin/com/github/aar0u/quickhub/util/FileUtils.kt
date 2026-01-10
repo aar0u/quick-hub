@@ -1,11 +1,27 @@
 package com.github.aar0u.quickhub.util
 
 object FileUtils {
+    fun normalizePath(path: String): String {
+        // Convert all backslashes to forward slashes for consistency
+        var normalized = path.replace("\\", "/")
+
+        // Remove any trailing slash
+        if (normalized.endsWith("/") && normalized != "/") {
+            normalized = normalized.dropLast(1)
+        }
+
+        return normalized
+    }
+
     fun trimFromBeginning(
         path: String,
         prefix: String,
     ): String {
-        val trimmed = path.removePrefix(prefix)
+        // Normalize both paths to ensure consistent separators
+        val normalizedPath = normalizePath(path)
+        val normalizedPrefix = normalizePath(prefix)
+
+        val trimmed = normalizedPath.removePrefix(normalizedPrefix)
         return trimmed.removePrefix("/").removePrefix("\\")
     }
 

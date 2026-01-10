@@ -15,8 +15,8 @@ if [ ! -f "$JAR_PATH" ]; then
     exit 1
 fi
 
-http_port="${2:-3006}"
-https_port="${3:-$((http_port + 363))}"
+export HTTP_PORT="${2:-3006}"
+export HTTPS_PORT="${3:-$((HTTP_PORT + 363))}"
 
 if [ $# -eq 0 ]; then
     java -jar "$JAR_PATH"

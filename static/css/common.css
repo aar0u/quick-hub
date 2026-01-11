@@ -23,7 +23,7 @@ body {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.25rem 0.5rem;
-  max-width: 1200px;
+  max-width: 960px;
   margin: 0 auto;
 }
 
@@ -102,6 +102,7 @@ input[type="file"] {
   border-radius: 4px;
   background-color: #fff;
   margin-bottom: 0;
+  max-width: 300px;
 }
 
 textarea {
@@ -123,6 +124,7 @@ input:focus {
 }
 
 .message-container {
+  flex: 1;
   padding: 0.25rem 0;
 }
 
@@ -133,6 +135,7 @@ input:focus {
 
 .list-container {
   margin-top: 0.25rem;
+  overflow-x: auto;
 }
 
 .list-container h1,
@@ -169,6 +172,7 @@ table td {
   padding: 8px;
   text-align: left;
   border-bottom: 1px solid #ddd;
+  white-space: nowrap;
 }
 
 table th {

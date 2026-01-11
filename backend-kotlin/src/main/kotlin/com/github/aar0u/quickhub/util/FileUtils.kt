@@ -8,8 +8,8 @@ object FileUtils {
         // Replace multiple consecutive slashes with a single slash
         normalized = normalized.replace(Regex("/+"), "/")
 
-        // Remove any trailing slash
-        if (normalized.endsWith("/") && normalized != "/") {
+        // Remove any trailing slash or dot (current directory)
+        while ((normalized.endsWith("/") || normalized.endsWith(".")) && normalized != "/" && normalized != ".") {
             normalized = normalized.dropLast(1)
         }
 

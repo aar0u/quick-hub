@@ -24,7 +24,7 @@ async function updateList() {
       elements.message.style.color = 'red';
     }
 
-    elements.folder.textContent = result.data.folder;
+    elements.folder.textContent = result.data.folder ? ' - ' + result.data.folder : '';
     elements.fileList.innerHTML = '';
 
     result.data.files.forEach((file) => {

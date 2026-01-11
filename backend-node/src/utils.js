@@ -20,8 +20,8 @@ function normalizePath(p) {
   // Replace multiple consecutive slashes with a single slash
   p = p.replace(/\/+/g, '/');
   
-  // Remove any trailing slash
-  if (p.endsWith('/') && p !== '/') {
+  // Remove any trailing slash or dot (current directory)
+  while ((p.endsWith('/') || p.endsWith('.')) && p !== '/' && p !== '.') {
     p = p.slice(0, -1);
   }
   

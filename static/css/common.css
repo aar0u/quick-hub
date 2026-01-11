@@ -123,6 +123,7 @@ input:focus {
 }
 
 .message-container {
+  flex: 1;
   padding: 0.25rem 0;
 }
 
@@ -161,12 +162,12 @@ input:focus {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 table th,
 table td {
-  padding: 8px;
+  padding: 4px 6px;
   text-align: left;
   border-bottom: 1px solid #ddd;
 }

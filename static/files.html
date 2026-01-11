@@ -4,17 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>File Server</title>
-  <link rel="stylesheet" href="css/pico.min.css" />
   <link rel="stylesheet" href="css/common.css" />
   <link rel="stylesheet" href="css/files.css" />
 </head>
 <body>
   <div class="container">
-    <h1>File Server <a href="pad.html">Temp Pad</a> <a href="gallery.html">Image Gallery</a></h1>
+    <header class="header-nav">
+      <h1>File Server</h1>
+      <nav class="nav-links">
+        <a href="pad.html">Temp Pad</a>
+        <a href="gallery.html">Image Gallery</a>
+      </nav>
+    </header>
     <input type="file" id="fileInput" />
     <div class="button-container">
-      <span role="button" id="uploadButton">Upload</span>
-      <span role="button" id="refreshButton">Refresh</span>
+      <button id="uploadButton">Upload</button>
+      <button id="refreshButton">Refresh</button>
     </div>
     <div class="message-container">
       <span id="message"></span>

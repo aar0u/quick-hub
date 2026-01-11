@@ -5,6 +5,9 @@ object FileUtils {
         // Convert all backslashes to forward slashes for consistency
         var normalized = path.replace("\\", "/")
 
+        // Replace multiple consecutive slashes with a single slash
+        normalized = normalized.replace(Regex("/+"), "/")
+
         // Remove any trailing slash
         if (normalized.endsWith("/") && normalized != "/") {
             normalized = normalized.dropLast(1)

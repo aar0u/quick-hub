@@ -17,6 +17,9 @@ function normalizePath(p) {
   // Convert all backslashes to forward slashes for consistency
   p = p.replace(/\\/g, '/');
   
+  // Replace multiple consecutive slashes with a single slash
+  p = p.replace(/\/+/g, '/');
+  
   // Remove any trailing slash
   if (p.endsWith('/') && p !== '/') {
     p = p.slice(0, -1);

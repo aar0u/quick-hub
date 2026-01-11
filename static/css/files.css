@@ -1,49 +1,9 @@
-#fileList {
-  font-size: medium;
-  width: 100%;
-  border-collapse: collapse;
-}
-
-#fileList tr {
-  cursor: pointer;
-}
-
-#fileList th,
-#fileList td {
-  padding: 8px;
-  text-align: left;
-  border-bottom: 1px solid #ddd;
-}
-
-#fileList th {
-  background-color: #f2f2f2;
-}
-
-#fileList td {
-  background-color: transparent;
-  /* Reset background color */
-}
-
-#fileList tr:nth-child(even) {
-  background-color: #f2f2f2;
-}
-
-#fileList tr:nth-child(odd) {
-  background-color: #ffffff;
-}
-
-#fileList tr:hover {
-  background-color: #e6e6e6;
-}
-
 #fileList .parent-dir {
   font-weight: bold;
 }
 
 #folder {
-  font-size: medium;
-}
-
-.container input[type="file"] {
-  margin-bottom: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-style: italic;
 }

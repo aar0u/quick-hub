@@ -1,9 +1,9 @@
 import { formatFileSize, escapeFilename } from './utils.js';
 import { checkFile, addFile, fetchList } from './api/fileApi.js';
+import { showInfo, showError, showSuccess } from './toast.js';
 
 const elements = {
   fileInput: document.getElementById('fileInput'),
-  message: document.getElementById('message'),
   folder: document.getElementById('folder'),
   fileList: document
     .getElementById('fileList')
@@ -14,14 +14,10 @@ let dirname = '';
 
 async function updateList() {
   try {
-    elements.message.textContent = '';
-    elements.message.style.color = '';
-
     const result = await fetchList(dirname);
 
     if (result.status !== 'success') {
-      elements.message.textContent = result.message;
-      elements.message.style.color = 'red';
+      showError(result.message);
     }
 
     elements.folder.textContent = result.data.folder ? ' - ' + result.data.folder : '';
@@ -31,34 +27,28 @@ async function updateList() {
       elements.fileList.appendChild(createFileRow(file));
     });
   } catch (error) {
-    console.error('Error:', error);
-    elements.message.textContent = error.message;
-    elements.message.style.color = 'red';
+    console.error(error);
+    showError(error.message);
   }
 }
 
 async function handleUpload() {
-  elements.message.textContent = '';
-  elements.message.style.color = '';
-
   const file = elements.fileInput.files[0];
   if (!file) return;
 
   try {
     const checkResult = await checkFile(dirname, file.name);
     if (checkResult.status !== 'success') {
-      elements.message.textContent = checkResult.message;
-      elements.message.style.color = 'red';
+      showError(checkResult.message);
       return;
     }
 
     await addFile(dirname, file, (progress) => {
-      elements.message.textContent = progress.toFixed(2) + '%';
-    }).then((res) => (elements.message.textContent = res.message));
+      showInfo(`Uploading ${progress.toFixed(0)}%`);
+    }).then((res) => showSuccess(res.message));
     await updateList();
   } catch (error) {
-    elements.message.textContent = error.message;
-    elements.message.style.color = 'red';
+    showError(error.message);
   }
 }
 

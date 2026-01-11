@@ -50,7 +50,7 @@ export async function addFile(dirname, file, onProgress) {
         const response = JSON.parse(xhr.responseText);
         resolve(response);
       } catch (error) {
-        reject(new Error('Invalid response format'));
+        reject(new Error('Invalid response'));
       }
     };
 

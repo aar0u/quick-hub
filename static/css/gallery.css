@@ -1,6 +1,6 @@
 .gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(267px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 25vw, 267px), 1fr));
   gap: 10px;
   transform: translateZ(0);
   will-change: transform;
@@ -147,25 +147,4 @@
 
 .next {
   right: 20px;
-}
-
-@media (max-width: 768px) {
-  .gallery {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 8px;
-  }
-
-  .loading-placeholder {
-    font-size: 12px;
-  }
-
-  .nav-button {
-    font-size: 30px;
-    padding: 15px;
-  }
-
-  .close {
-    font-size: 30px;
-    right: 20px;
-  }
 }

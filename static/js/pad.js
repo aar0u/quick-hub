@@ -1,7 +1,7 @@
 import { formatDate } from './utils.js';
 import { fetchList, addText } from './api/textApi.js';
+import { showInfo, showError, showSuccess } from './toast.js';
 
-const messageDiv = document.getElementById('message');
 const textArea = document.getElementById('text-area');
 const historyList = document.getElementById('history-list');
 
@@ -16,25 +16,22 @@ async function updateList() {
       historyList.prepend(listItem);
     });
   } catch (error) {
-    console.error('Error loading history:', error);
+    console.error(error);
   }
 }
 
 async function handleSave() {
-  messageDiv.textContent = '';
-  messageDiv.style.color = '';
   try {
     const result = await addText(textArea.value);
-    messageDiv.textContent = result.message;
     if (result.status === 'success') {
+      showSuccess(result.message);
       await updateList();
     } else {
-      messageDiv.style.color = 'red';
+      showError(result.message);
     }
   } catch (error) {
-    console.error('Error saving text:', error);
-    messageDiv.textContent = error.message;
-    messageDiv.style.color = 'red';
+    console.error(error);
+    showError(error.message);
   }
 }
 
@@ -42,7 +39,7 @@ function handleCopy(text) {
   textArea.value = text;
   textArea.select();
   document.execCommand('copy');
-  messageDiv.textContent = 'Copied to clipboard';
+  showInfo('Copied');
 }
 
 document.getElementById('saveButton').addEventListener('click', handleSave);

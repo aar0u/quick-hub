@@ -46,15 +46,15 @@ async function loadImages() {
         
         displayGallery();
     } catch (error) {
-        console.error('Error loading images:', error);
-        gallery.innerHTML = '<p class="no-images">Error loading images. Please make sure the server is running.</p>';
+        console.error(error);
+        gallery.innerHTML = '<p class="no-images">Failed to load images</p>';
     }
 }
 
 // Display thumbnail gallery with lazy loading
 function displayGallery() {
     if (images.length === 0) {
-        gallery.innerHTML = '<p class="no-images">No images found.</p>';
+        gallery.innerHTML = '<p class="no-images">No images</p>';
         return;
     }
 
@@ -82,7 +82,7 @@ function displayGallery() {
         // Add loading placeholder
         const loading = document.createElement('div');
         loading.className = 'loading-placeholder';
-        loading.innerHTML = '<span>Loading...</span>';
+        loading.innerHTML = '<span>Loading</span>';
         
         img.addEventListener('click', () => openModal(index));
         
@@ -92,7 +92,7 @@ function displayGallery() {
         });
         
         img.addEventListener('error', () => {
-            loading.innerHTML = '<span>Error</span>';
+            loading.innerHTML = '<span>Failed</span>';
         });
         
         container.appendChild(img);

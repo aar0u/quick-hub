@@ -1,54 +1,25 @@
 package com.github.aar0u.quickhub.android
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import com.github.aar0u.android.ui.theme.Theme1
 import com.github.aar0u.quickhub.android.HttpRunner.isBusy
 import com.github.aar0u.quickhub.android.HttpRunner.isServerRunning
 import com.github.aar0u.quickhub.android.HttpRunner.startServer
@@ -61,10 +32,12 @@ import java.io.InputStream
 private val tag = MainActivity::class.simpleName
 private val versionGreater29 = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q
 private val versionGreater22 = Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1
-private val toggleState = mutableStateOf(false)
-private val sdPath = Environment.getExternalStorageDirectory().absolutePath
+private val mainHandler = Handler(Looper.getMainLooper())
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var webView: WebView
+    private var toggleState = false
     private lateinit var folderPickerLauncher: ActivityResultLauncher<Uri?>
     private lateinit var permissionSettingLauncher: ActivityResultLauncher<Intent>
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
@@ -73,27 +46,62 @@ class MainActivity : ComponentActivity() {
         Log.init(this)
 
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            Theme1 {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ComposeMainColumn1(modifier = Modifier.padding(innerPadding),
-                        onUpdateToggleState = { updateToggleState(it) },
-                        onReceiveApk = { installApk(file = it) },
-                        onOpenFolderPicker = {
-                            if (versionGreater29) folderPickerLauncher.launch(null)
-                        },
-                        onGetSerConfig = { getSerConfig() })
-                }
+        webView = WebView(this)
+        setContentView(webView)
+
+        initWebView()
+        Log.setWebView(webView)
+        initLaunchers()
+
+        val sdPath = Environment.getExternalStorageDirectory().absolutePath
+        toggleState =
+            sdPath == sharedPreferences.getString("path", null) && checkStoragePermissions()
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun initWebView() {
+        webView.settings.javaScriptEnabled = true
+        webView.settings.domStorageEnabled = true
+        webView.webViewClient = WebViewClient()
+        webView.webChromeClient = WebChromeClient()
+        webView.addJavascriptInterface(Bridge(), "Android")
+        webView.loadUrl("file:///android_asset/control.html")
+    }
+
+    private fun initLaunchers() {
+        folderPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+            uri?.let {
+                val folderPath = getAbsolutePathFromUri(it)
+                Log.i(tag, "Root folder: $folderPath")
+                sharedPreferences.edit().putString("path", folderPath).commit()
             }
         }
 
-        toggleState.value =
-            sdPath.equals(sharedPreferences.getString("path", null)) && checkStoragePermissions()
+        permissionSettingLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                Log.i(tag, "Activity result: $it")
+                syncToggleState()
+            }
 
-        folderPickerLauncher = initFolderPickerLauncher()
-        permissionSettingLauncher = initPermissionSettingLauncher()
-        permissionLauncher = initPermissionLauncher()
+        permissionLauncher =
+            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+                Log.i(tag, "Activity result: $permissions")
+                syncToggleState()
+            }
+    }
+
+    private fun checkStoragePermissions(): Boolean {
+        return if (versionGreater29) {
+            Environment.isExternalStorageManager()
+        } else if (versionGreater22) {
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+                this, Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
     }
 
     private fun requestStoragePermissions() {
@@ -111,20 +119,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkStoragePermissions(): Boolean {
-        return if (versionGreater29) {
-            Environment.isExternalStorageManager()
-        } else if (versionGreater22) {
-            ContextCompat.checkSelfPermission(
-                this, Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
-                this, Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true // Permissions are granted by default on older Android versions
-        }
-    }
-
     private fun installApk(file: File) {
         if (file.path.endsWith(".apk")) {
             val apkUri = FileProvider.getUriForFile(
@@ -133,35 +127,9 @@ class MainActivity : ComponentActivity() {
             Log.i(tag, "Install APK: $file")
             val installIntent = Intent(Intent.ACTION_VIEW).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-                setDataAndType(
-                    apkUri, "application/vnd.android.package-archive"
-                )
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
             }
             this.startActivity(installIntent)
-        }
-    }
-
-    private fun initPermissionSettingLauncher(): ActivityResultLauncher<Intent> {
-        return registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            Log.i(tag, "Activity result: $result")
-            syncToggleState()
-        }
-    }
-
-    private fun initFolderPickerLauncher(): ActivityResultLauncher<Uri?> {
-        return registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
-            uri?.let {
-                val folderPath = getAbsolutePathFromUri(it)
-                Log.i(tag, "Root folder: $folderPath")
-                sharedPreferences.edit().putString("path", folderPath).commit()
-            }
-        }
-    }
-
-    private fun initPermissionLauncher(): ActivityResultLauncher<Array<String>> {
-        return registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            Log.i(tag, "Activity result: $permissions")
-            syncToggleState()
         }
     }
 
@@ -169,19 +137,23 @@ class MainActivity : ComponentActivity() {
         if (isChecked && !syncToggleState()) {
             requestStoragePermissions()
         } else {
-            toggleState.value = isChecked
+            toggleState = isChecked
+            callJs("onToggleStateChanged($toggleState)")
         }
     }
 
     private fun syncToggleState(): Boolean {
-        toggleState.value = checkStoragePermissions()
-        if (toggleState.value) {
+        toggleState = checkStoragePermissions()
+        if (toggleState) {
+            val sdPath = Environment.getExternalStorageDirectory().absolutePath
             sharedPreferences.edit().putString("path", sdPath).apply()
         }
-        return toggleState.value
+        callJs("onToggleStateChanged($toggleState)")
+        return toggleState
     }
 
     private fun getAbsolutePathFromUri(uri: Uri): String? {
+        val sdPath = Environment.getExternalStorageDirectory().absolutePath
         return uri.path?.split(":")?.takeIf {
             it.getOrNull(0)?.endsWith("primary") ?: false
         }?.let {
@@ -190,146 +162,63 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun getSerConfig(): Config? {
+        val sdPath = Environment.getExternalStorageDirectory().absolutePath
         return sharedPreferences.getString("path", null)
-            ?.takeIf { it != sdPath || toggleState.value }
+            ?.takeIf { it != sdPath || toggleState }
             ?.let { Config(it, 3006, overwrite = true) }
+    }
+
+    private fun callJs(script: String) {
+        mainHandler.post { webView.evaluateJavascript(script, null) }
+    }
+
+    private fun handleServerButtonClick() {
+        if (isBusy) return
+        isBusy = true
+        callJs("onServerStateChanged($isServerRunning, true)")
+
+        if (isServerRunning) {
+            Log.i(tag, "Stopping HTTP server")
+            stopServer()
+        } else {
+            Log.i(tag, "Starting HTTP server")
+            getSerConfig()?.let { serverConfig ->
+                startServer(serverConfig, object : HttpService.CallBackListener {
+                    override fun onContentRequested(path: String): InputStream {
+                        return Log.file.also {
+                            Log.i(tag, "Retrieve log file via dummy url $path")
+                        }.inputStream()
+                    }
+
+                    override fun onFileReceived(file: File) = installApk(file)
+                })
+            } ?: run {
+                Log.e(tag, "An error occurred, please check permission")
+                isBusy = false
+                callJs("onServerStateChanged($isServerRunning, false)")
+            }
+        }
     }
 
     private val sharedPreferences by lazy {
         applicationContext.getSharedPreferences("_preferences", MODE_PRIVATE)
     }
-}
 
-@Composable
-fun ComposeMainColumn1(
-    modifier: Modifier = Modifier,
-    onUpdateToggleState: (Boolean) -> Unit = {},
-    onReceiveApk: (File) -> Unit = {},
-    onOpenFolderPicker: () -> Unit = {},
-    onGetSerConfig: () -> Config? = { null }
-) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        val modifierBtn = Modifier
-            .size(60.dp)
-            .clip(CircleShape)
+    inner class Bridge {
+        @JavascriptInterface
+        fun toggleServer() = handleServerButtonClick()
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = {
-                    handleServerButtonClick(onGetSerConfig, onReceiveApk)
-                },
-                modifier = modifierBtn,
-                contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors(),
-                enabled = !isBusy.value
-            ) {
-                Icon(
-                    imageVector = if (isServerRunning.value) Icons.Rounded.Close else Icons.Rounded.PlayArrow,
-                    contentDescription = if (isServerRunning.value) "Stop Server" else "Start Server",
-                )
-            }
-
-            Button(
-                onClick = onOpenFolderPicker,
-                contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors(),
-                enabled = versionGreater29 && !toggleState.value,
-                modifier = modifierBtn,
-            ) {
-                Text("...")
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Switch(
-                    checked = toggleState.value,
-                    onCheckedChange = { onUpdateToggleState(it) },
-                )
-                Text("SD Card")
-            }
+        @JavascriptInterface
+        fun openFolderPicker() {
+            if (versionGreater29) folderPickerLauncher.launch(null)
         }
 
-        AutoScrollingLog()
-    }
-}
-
-private fun handleServerButtonClick(
-    onGetSerConfig: () -> Config?, onReceiveApk: (File) -> Unit
-) {
-    if (isBusy.value) return
-    isBusy.value = true
-
-    if (isServerRunning.value) {
-        Log.i(tag, "Stopping HTTP server")
-        stopServer()
-    } else {
-        Log.i(tag, "Starting HTTP server")
-        onGetSerConfig()?.let { serverConfig ->
-            startServer(serverConfig, object : HttpService.CallBackListener {
-                override fun onContentRequested(path: String): InputStream {
-                    return Log.file.also {
-                        Log.i(tag, "Retrieve log file via dummy url $path")
-                    }.inputStream()
-                }
-
-                override fun onFileReceived(file: File) = onReceiveApk(file)
-            })
-        } ?: run {
-            Log.e(tag, "An error occurred, please check permission")
-            isBusy.value = false
-        }
-    }
-}
-
-@Composable
-fun AutoScrollingLog() {
-    val logList = Log.logList.collectAsState().value
-
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(logList.size) {
-        if (logList.isNotEmpty()) {
-            listState.animateScrollToItem(logList.size - 1)
-        }
+        @JavascriptInterface
+        fun onToggleSd(checked: Boolean) = mainHandler.post { updateToggleState(checked) }
     }
 
-    LazyColumn(
-        state = listState, modifier = Modifier.fillMaxSize()
-    ) {
-        itemsIndexed(logList) { index, log ->
-            val keywords = listOf("error", "exception")
-            val rowColor = when {
-                keywords.any { log.contains(it, ignoreCase = true) } -> Color.Red
-                index % 2 == 0 -> Color.LightGray // Even rows
-                else -> Color.White // Odd rows
-            }
-            Text(
-                log,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 3.dp)
-                    .background(rowColor),
-                fontSize = 12.sp
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun Column1Preview() {
-    Theme1 {
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            ComposeMainColumn1(modifier = Modifier.padding(innerPadding))
-        }
+    override fun onDestroy() {
+        webView.destroy()
+        super.onDestroy()
     }
 }

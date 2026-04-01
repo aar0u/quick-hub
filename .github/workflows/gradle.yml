@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   backend:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./backend-kotlin
@@ -81,22 +81,18 @@ jobs:
           name: backend-jar
           path: ~/.m2/repository/com/github/aar0u/quick-hub
 
-      - name: Decode Keystore
-        run: |
-          echo "${{ vars.BASE64_DEBUG }}" | base64 --decode > app/temp_keystore.jks
-          pwd
-          ls -l app
+      - name: Decode keystore
+        run: echo "${{ vars.BASE64_RELEASE_JKS }}" | base64 -d > app/release.jks
 
       - name: Build with Gradle
         run: |
           ls -lR ~/.m2/repository/com/github/aar0u/quick-hub
-          ./gradlew assembleDebug -PcommitSha=${{ needs.backend.outputs.short_sha }} -PversionCode=1
-          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/quick-hub.apk
+          ./gradlew assembleRelease -PcommitSha=${{ needs.backend.outputs.short_sha }} -PversionCode=1
 
       - name: Github Release
         uses: ncipollo/release-action@v1
         with:
           tag: r-${{ needs.backend.outputs.short_timestamp }}
           name: "Release ${{ needs.backend.outputs.short_timestamp }}"
-          artifacts: android/app/build/outputs/apk/debug/*.apk
+          artifacts: android/app/build/outputs/apk/release/*.apk
           allowUpdates: true

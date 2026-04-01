@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-dim: #7d8590;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --red: #f85149;
+      --orange: #d29922;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      flex-shrink: 0;
+    }
+    .topbar h1 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .status-dot.on { background: var(--green); box-shadow: 0 0 5px var(--green); }
+    .status-dot.busy { background: var(--orange); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .topbar .status-text {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-left: auto;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .controls {
+      padding: 0 16px 8px;
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-header {
+      padding: 6px 10px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-dim);
+    }
+    
+    .btn-main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: #fff;
+      outline: none;
+    }
+    .btn-main:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+    .btn-main:active { transform: scale(0.97); }
+    .btn-start { background: var(--green); }
+    .btn-start.running { background: var(--red); }
+    .btn-start:disabled { background: var(--border); color: var(--text-dim); pointer-events: none; }
+    
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px 8px;
+    }
+    .toggle-label { font-size: 13px; }
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 11px;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-track { background: var(--accent); }
+    .toggle input:checked + .toggle-track::after { transform: translateX(16px); }
+    .toggle input:focus-visible + .toggle-track { box-shadow: 0 0 0 2px var(--accent); }
+    
+    .path-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      width: 100%;
+      padding: 7px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      outline: none;
+    }
+    .path-btn:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+    .path-btn:active { background: var(--border); }
+    .path-btn:disabled { opacity: 0.3; pointer-events: none; }
+    .disabled-overlay .path-btn:disabled { opacity: 1; }
+    
+    .log-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 0 16px 16px;
+    }
+    .log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+    .log-header span {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-dim);
+    }
+    .log-clear {
+      font-size: 11px;
+      color: var(--accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 4px;
+      outline: none;
+    }
+    .log-clear:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+    .log-clear:active { background: var(--surface); }
+    
+    #log {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow-y: auto;
+      padding: 6px;
+      font-family: "SF Mono", "Cascadia Code", "Fira Code", Menlo, monospace;
+      font-size: 10px;
+      line-height: 1.5;
+      -webkit-overflow-scrolling: touch;
+    }
+    #log div {
+      padding: 1px 5px;
+      border-radius: 3px;
+      word-break: break-all;
+    }
+    #log div:nth-child(even) { background: rgba(255,255,255,0.02); }
+    #log div.error { color: var(--red); background: rgba(248,81,73,0.1); }
+    
+    .disabled-overlay {
+      position: relative;
+    }
+    .disabled-overlay::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+      opacity: 0.5;
+      border-radius: 10px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="topbar">
+    <h1>Quick Hub</h1>
+    <div id="statusDot" class="status-dot"></div>
+    <span id="statusText" class="status-text">Stopped</span>
+  </div>
+  
+  <div class="controls">
+    <div class="card" style="flex: 1.2;">
+      <div class="card-header">Server</div>
+      <div style="padding: 0 10px 10px; flex: 1; display: flex; justify-content: center;">
+        <button id="btnServer" class="btn-main btn-start" onclick="toggleServer()">Start</button>
+      </div>
+    </div>
+    <div id="storageCard" class="card" style="flex: 2;">
+      <div class="card-header">Storage</div>
+      <div class="toggle-row">
+        <span class="toggle-label">SD Card</span>
+        <div class="toggle">
+          <input type="checkbox" id="toggleSd" onchange="onToggleSd(this.checked)">
+          <label class="toggle-track" for="toggleSd"></label>
+        </div>
+      </div>
+      <div style="padding: 0 10px 10px;">
+        <button id="btnFolder" class="path-btn" onclick="openFolderPicker()">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1 3.5C1 2.67 1.67 2 2.5 2H6.29a1 1 0 0 1 .7.29L8.59 3.88a1 1 0 0 0 .7.29H13.5c.83 0 1.5.67 1.5 1.5v6.83c0 .83-.67 1.5-1.5 1.5h-11C2.17 14 1 13.33 1 12.5v-9Z" stroke="currentColor" stroke-width="1.2"/></svg>
+          Custom path
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="log-section">
+    <div class="log-header">
+      <span>Log</span>
+      <button class="log-clear" onclick="clearLog()">Clear</button>
+    </div>
+    <div id="log"></div>
+  </div>
+  
+  <script>
+    const btnServer = document.getElementById('btnServer');
+    const btnFolder = document.getElementById('btnFolder');
+    const storageCard = document.getElementById('storageCard');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const logEl = document.getElementById('log');
+    const MAX_LOG = 300;
+    
+    function toggleServer() {
+      btnServer.disabled = true;
+      setControlsLocked(true);
+      Android.toggleServer();
+    }
+    function openFolderPicker() { Android.openFolderPicker(); }
+    function onToggleSd(checked) { Android.onToggleSd(checked); }
+    
+    function setControlsLocked(locked, sdCardEnabled) {
+      storageCard.classList.toggle('disabled-overlay', locked);
+      document.getElementById('toggleSd').disabled = locked;
+      btnFolder.disabled = locked || sdCardEnabled;
+    }
+    
+    function onServerStateChanged(running, busy) {
+      btnServer.textContent = running ? 'Stop' : 'Start';
+      btnServer.classList.toggle('running', running);
+      btnServer.disabled = false;
+      
+      setControlsLocked(running || busy, document.getElementById('toggleSd').checked);
+      
+      statusDot.className = 'status-dot' + (busy ? ' busy' : running ? ' on' : '');
+      statusText.textContent = busy ? 'Starting...' : running ? 'Running on :3006' : 'Stopped';
+    }
+    
+    function onToggleStateChanged(checked) {
+      document.getElementById('toggleSd').checked = checked;
+      setControlsLocked(storageCard.classList.contains('disabled-overlay'), checked);
+    }
+    
+    function onLogEntry(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      if (/error|exception/i.test(text)) div.className = 'error';
+      logEl.appendChild(div);
+      while (logEl.children.length > MAX_LOG) logEl.removeChild(logEl.firstChild);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    
+    function clearLog() { logEl.innerHTML = ''; }
+  </script>
+</body>
+</html>

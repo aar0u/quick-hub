@@ -1,6 +1,8 @@
 package com.github.aar0u.quickhub.android
 
-import androidx.compose.runtime.mutableStateOf
+import android.os.Handler
+import android.os.Looper
+import android.webkit.WebView
 import com.github.aar0u.quickhub.model.Config
 import com.github.aar0u.quickhub.service.HttpService
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -13,8 +15,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 object HttpRunner {
-    var isServerRunning = mutableStateOf(false)
-    var isBusy = mutableStateOf(false)
+    var isServerRunning = false
+        private set
+    var isBusy = false
 
     private var httpService: HttpService? = null
     private var serverCoroutine: Job? = null
@@ -29,18 +32,27 @@ object HttpRunner {
             httpService = HttpService(config, listener)
             httpService?.start()
             delay(500)
-            isServerRunning.value = true
-            isBusy.value = false
+            isServerRunning = true
+            isBusy = false
+            notifyServerState()
         }
     }
 
     fun stopServer() {
         serverCoroutine?.cancel()
         serverCoroutine = serverScope.launch {
-            httpService?.stop() //it's blocking hence no delay
+            httpService?.stop()
             httpService = null
-            isServerRunning.value = false
-            isBusy.value = false
+            isServerRunning = false
+            isBusy = false
+            notifyServerState()
+        }
+    }
+
+    private fun notifyServerState() {
+        val wv = Log.webView ?: return
+        Handler(Looper.getMainLooper()).post {
+            wv.evaluateJavascript("onServerStateChanged($isServerRunning, $isBusy)", null)
         }
     }
 }

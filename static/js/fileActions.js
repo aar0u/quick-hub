@@ -1,4 +1,5 @@
-import { escapeFilename, showToast } from './utils.js';
+import { escapeFilename } from './utils.js';
+import { showToast } from './toast.js';
 
 function pushButton(td, file) {
   const url = `${window.location.protocol}//${window.location.hostname}${window.location.port

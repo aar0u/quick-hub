@@ -1,6 +1,6 @@
 import { formatFileSize, escapeFilename } from './utils.js';
 import { checkFile, addFile, fetchList } from './api/fileApi.js';
-import { showInfo, showError, showSuccess } from './toast.js';
+import { showToast, closeToastByKey, showError, showSuccess } from './toast.js';
 
 const elements = {
   fileInput: document.getElementById('fileInput'),
@@ -11,6 +11,7 @@ const elements = {
 };
 
 let dirname = '';
+const UPLOAD_PROGRESS_TOAST_KEY = 'upload-progress';
 
 async function updateList() {
   try {
@@ -44,10 +45,17 @@ async function handleUpload() {
     }
 
     await addFile(dirname, file, (progress) => {
-      showInfo(`Uploading ${progress.toFixed(0)}%`);
-    }).then((res) => showSuccess(res.message));
+      showToast(`Uploading ${progress.toFixed(0)}%`, {
+        type: 'info',
+        key: UPLOAD_PROGRESS_TOAST_KEY,
+      });
+    }).then((res) => {
+      closeToastByKey(UPLOAD_PROGRESS_TOAST_KEY);
+      showSuccess(res.message);
+    });
     await updateList();
   } catch (error) {
+    closeToastByKey(UPLOAD_PROGRESS_TOAST_KEY);
     showError(error.message);
   }
 }
